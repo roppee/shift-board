@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ヘルパーステーション欅 シフト表</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Noto Sans JP',sans-serif}
+    #loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;color:#64748b;font-size:14px}
+    .spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="欅シフト">
+
+
+
+
+</head>
+<body>
+  <div id="loading"><div class="spinner"></div><div>読み込み中...</div></div>
+  <div id="root" style="display:none"></div>
+  <script id="app-src" type="text/plain">
+const { useState, useMemo, useEffect } = React;
+
+// ═══════════════════════════════════════════════════════════
+//  定数・型定義
+// ═══════════════════════════════════════════════════════════
+const FIXED_TYPES = {
+  休み:   { label:"休み",   short:"休", hours:"—", color:"#cbd5e1", bg:"#f8fafc", text:"#94a3b8", workHours:0, fixed:true },
+  希望休: { label:"希望休", short:"希", hours:"—", color:"#f87171", bg:"#fff5f5", text:"#b91c1c", workHours:0, fixed:true },
+};
+const INITIAL_CUSTOM_SHIFTS = [
+  { key:"早番", label:"早番", short:"早", startH:7,  endH:15, color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { key:"遅番", label:"遅番", short:"遅", startH:14, endH:22, color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { key:"日勤", label:"日勤", short:"日", startH:9,  endH:18, color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { key:"夜勤", label:"夜勤", short:"夜", startH:22, endH:31, color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+];
+
+const DOW = ["日","月","火","水","木","金","土"];
+const COLORS = ["#0ea5e9","#f43f5e","#8b5cf6","#f59e0b","#10b981","#ec4899","#06b6d4","#84cc16","#ef4444","#a855f7","#14b8a6","#f97316","#6366f1","#22c55e","#e879f9","#0891b2","#ca8a04","#dc2626","#7c3aed"];
+const PILL_COLORS = [
+  { color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+  { color:"#e11d48", bg:"#fff1f2", text:"#9f1239" },
+  { color:"#0891b2", bg:"#ecfeff", text:"#164e63" },
+  { color:"#65a30d", bg:"#f7fee7", text:"#3a5c02" },
+  { color:"#c026d3", bg:"#fdf4ff", text:"#701a75" },
+];
+
+const ORDER_CONSTRAINTS_DEFAULT = { 早番:["夜勤"], 夜勤:["早番"], 遅番:[], 日勤:[] };
+const DEFAULT_STAFF_CONSTRAINTS  = { minWorkDays:15, maxWorkDays:22, minWorkHours:120, maxWorkHours:180, maxConsecutive:5, unavailableDows:[], preferredShifts:["早番","遅番","日勤","夜勤"] };
+const DEFAULT_REQUIRED = { 早番:2, 遅番:2, 日勤:2, 夜勤:1 };
+
+const INITIAL_STAFF = [
+  { id:1,  name:"田中 花子",   role:"正社員", color:COLORS[0],  section:"staff" },
+  { id:2,  name:"鈴木 一郎",   role:"正社員", color:COLORS[1],  section:"staff" },
+  { id:3,  name:"佐藤 美咲",   role:"正社員", color:COLORS[2],  section:"staff" },
+  { id:4,  name:"山田 太郎",   role:"正社員", color:COLORS[3],  section:"staff" },
+  { id:5,  name:"中村 葵",     role:"正社員", color:COLORS[4],  section:"staff" },
+  { id:6,  name:"小林 健二",   role:"正社員", color:COLORS[5],  section:"staff" },
+  { id:7,  name:"加藤 理恵",   role:"正社員", color:COLORS[6],  section:"staff" },
+  { id:8,  name:"松本 大樹",   role:"正社員", color:COLORS[7],  section:"staff" },
+  { id:9,  name:"井上 奈々",   role:"正社員", color:COLORS[8],  section:"staff" },
+  { id:10, name:"木村 浩二",   role:"正社員", color:COLORS[9],  section:"staff" },
+  { id:11, name:"林 さくら",   role:"正社員", color:COLORS[10], section:"staff" },
+  { id:12, name:"清水 拓也",   role:"正社員", color:COLORS[11], section:"staff" },
+  { id:13, name:"岡田 美穂",   role:"正社員", color:COLORS[12], section:"staff" },
+  { id:14, name:"橋本 陽介",   role:"正社員", color:COLORS[13], section:"staff" },
+  { id:15, name:"渡辺 千夏",   role:"正社員", color:COLORS[14], section:"staff" },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  ユーティリティ
+// ═══════════════════════════════════════════════════════════
+const getDaysInMonth = (y,m) => new Date(y,m+1,0).getDate();
+const getDow = (y,m,d) => new Date(y,m,d).getDay();
+const fmt2 = n => String(n).padStart(2,"0");
+const dateKey = (y,m,d) => `${y}-${fmt2(m+1)}-${fmt2(d)}`;
+function getWeekDates(base) {
+  const d = new Date(base);
+  const offset = (d.getDay()+6)%7;
+  const mon = new Date(d); mon.setDate(d.getDate()-offset);
+  return Array.from({length:7},(_,i)=>{ const dd=new Date(mon); dd.setDate(mon.getDate()+i); return dd; });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  自動生成エンジン
+// ═══════════════════════════════════════════════════════════
+function autoGenerateShifts(employees, year, month, wishdays, constraints, required, section, shiftHours, customShifts, orderConstraints) {
+  const days = getDaysInMonth(year, month);
+  const shiftKeys = section === "office"
+    ? (customShifts.find(s=>s.key==="日勤") ? ["日勤"] : [])
+    : customShifts.map(s=>s.key);
+  const SHIFT_HOURS_LOCAL = shiftHours || { 早番:8, 遅番:8, 日勤:9, 夜勤:9, 休み:0, 希望休:0 };
+  const OC = orderConstraints || ORDER_CONSTRAINTS_DEFAULT;
+  const result = {};
+  employees.forEach(e => { result[e.id] = {}; });
+  employees.forEach(emp => {
+    const wishSet = wishdays[emp.id] || new Set();
+    for (let d=1; d<=days; d++) {
+      if (wishSet.has(dateKey(year,month,d))) result[emp.id][d] = "希望休";
+    }
+  });
+  const getC = emp => constraints[emp.id] || (section==="office" ? DEFAULT_OFFICE_CONSTRAINTS : DEFAULT_STAFF_CONSTRAINTS);
+  for (let d=1; d<=days; d++) {
+    const dow = getDow(year,month,d);
+    const available = employees.filter(emp => {
+      if (result[emp.id][d]) return false;
+      return !getC(emp).unavailableDows.includes(dow);
+    });
+    const workCount  = id => Object.values(result[id]).filter(v=>!["休み","希望休"].includes(v)).length;
+    const hoursCount = id => Object.values(result[id]).reduce((a,v)=>a+(SHIFT_HOURS_LOCAL[v]||0),0);
+    const consecutive = id => { let c=0; for(let dd=d-1;dd>=1;dd--){ const s=result[id][dd]; if(s&&!["休み","希望休"].includes(s))c++; else break; } return c; };
+    const checkOrder  = (id,type) => { const prev=result[id][d-1]; if(!prev)return true; return !(OC[prev]||[]).includes(type); };
+    if (section==="staff") {
+      for (const shiftType of shiftKeys) {
+        const needed = required[shiftType]||0; let assigned=0;
+        const shuffled = [...available].sort(()=>Math.random()-0.5);
+        for (const emp of shuffled) {
+          if (assigned>=needed) break;
+          if (result[emp.id][d]) continue;
+          const c = getC(emp);
+          if (consecutive(emp.id)>=c.maxConsecutive) continue;
+          if (workCount(emp.id)>=c.maxWorkDays) continue;
+          if (hoursCount(emp.id)+SHIFT_HOURS_LOCAL[shiftType]>c.maxWorkHours) continue;
+          if (!c.preferredShifts.includes(shiftType)) continue;
+          if (!checkOrder(emp.id,shiftType)) continue;
+          result[emp.id][d] = shiftType; assigned++;
+        }
+      }
+    } else {
+      for (const emp of available) {
+        if (result[emp.id][d]) continue;
+        const c = getC(emp);
+        if (c.unavailableDows.includes(dow)||consecutive(emp.id)>=c.maxConsecutive||workCount(emp.id)>=c.maxWorkDays||!checkOrder(emp.id,"日勤"))
+          { result[emp.id][d]="休み"; continue; }
+        result[emp.id][d]="日勤";
+      }
+    }
+    employees.forEach(emp => { if(!result[emp.id][d]) result[emp.id][d]="休み"; });
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  希望休タブ（スクロール保持のため独立コンポーネント）
+// ═══════════════════════════════════════════════════════════
+function WishTabComponent({ wishDate, employees, wishdays, toggleWish, C, S }) {
+  const wy = wishDate.getFullYear();
+  const wm = wishDate.getMonth();
+  const wDays = getDaysInMonth(wy, wm);
+  const days = Array.from({length:wDays},(_,i)=>i+1);
+  return (
+    <div>
+      <p style={{ color:C.textSub, fontSize:13, marginTop:0 }}>セルをクリックして希望休を登録。自動生成時に反映されます。</p>
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", minWidth:800, fontSize:11 }}>
+          <thead>
+            <tr>
+              <th style={{ ...S.th(150), textAlign:"left", paddingLeft:12 }}>氏名</th>
+              {days.map(d=>{
+                const dow=getDow(wy,wm,d);
+                return (
+                  <th key={d} style={{ ...S.th(30), color:dow===0?"#ef4444":dow===6?"#3b82f6":C.textMute }}>
+                    <div>{d}</div><div style={{ fontSize:8 }}>{DOW[dow]}</div>
+                  </th>
+                );
+              })}
+              <th style={S.th(48)}>件数</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp,ei)=>{
+              const wishSet=wishdays[emp.id]||new Set();
+              return (
+                <tr key={emp.id} style={{ background:ei%2===0?C.surface:C.surface2 }}>
+                  <td style={{ padding:"5px 12px", borderBottom:`1px solid ${C.border}` }}>
+                    <div style={{ fontWeight:600, color:C.text }}>{emp.name}</div>
+                    <div style={{ fontSize:9, color:C.textMute }}>{emp.role}</div>
+                  </td>
+                  {days.map(d=>{
+                    const k=dateKey(wy,wm,d);
+                    const wished=wishSet.has(k);
+                    return (
+                      <td key={d} style={{ padding:"2px 1px", borderBottom:`1px solid ${C.border}`, textAlign:"center" }}>
+                        <button onClick={()=>toggleWish(emp.id,k)}
+                          style={{ width:22,height:22,borderRadius:5, border:wished?`2px solid ${C.red}`:`1px solid ${C.border}`, background:wished?C.redBg:C.surface2, cursor:"pointer", fontSize:9, fontWeight:700, color:wished?C.red:C.border2, transition:"all 0.15s" }}>
+                          {wished?"希":""}
+                        </button>
+                      </td>
+                    );
+                  })}
+                  <td style={{ textAlign:"center", color:C.red, fontWeight:700, borderBottom:`1px solid ${C.border}` }}>
+                    {wishSet.size>0?`${wishSet.size}件`:"—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  メインアプリ
+// ═══════════════════════════════════════════════════════════
+function ShiftApp() {
+  const today = new Date();
+  const [view, setView]               = useState("month");
+  const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(),today.getMonth(),1));
+  const [mainTab, setMainTab]         = useState("shift");
+  const [staffList, setStaffList]     = useState(INITIAL_STAFF);
+  const [staffShifts, setStaffShifts] = useState({});
+  const [wishdays, setWishdays]       = useState({});
+  const [constraints, setConstraints] = useState({});
+  const [required, setRequired]       = useState(DEFAULT_REQUIRED);
+  const [editCell, setEditCell]       = useState(null);
+  const [newName, setNewName]         = useState("");
+  const [msg, setMsg]                 = useState("");
+  const [customShifts, setCustomShifts] = useState(INITIAL_CUSTOM_SHIFTS);
+  const [selectedConstraintId, setSelectedConstraintId] = useState(INITIAL_STAFF[0]?.id || null);
+  const [wishDate, setWishDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [orderConstraints, setOrderConstraints] = useState(ORDER_CONSTRAINTS_DEFAULT);
+
+  // カスタムシフトからSHIFT_TYPES・SHIFT_HOURSを動的生成
+  const SHIFT_TYPES = useMemo(() => {
+    const obj = {};
+    customShifts.forEach(s => {
+      const endLabel = s.endH > 24 ? `0${s.endH-24}:00` : `${fmt2(s.endH)}:00`;
+      obj[s.key] = { label:s.label, short:s.short, hours:`${fmt2(s.startH)}:00-${endLabel}`, color:s.color, bg:s.bg, text:s.text };
+    });
+    return { ...obj, ...FIXED_TYPES };
+  }, [customShifts]);
+
+  const SHIFT_HOURS = useMemo(() => {
+    const obj = { 休み:0, 希望休:0 };
+    customShifts.forEach(s => { obj[s.key] = s.endH - s.startH; });
+    return obj;
+  }, [customShifts]);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = getDaysInMonth(year,month);
+  const weekDates   = getWeekDates(currentDate);
+  const employees   = staffList;
+  const shifts      = staffShifts;
+  const setShifts   = setStaffShifts;
+  const shiftTypes  = SHIFT_TYPES;
+
+  const showMsg = m => { setMsg(m); setTimeout(()=>setMsg(""),3000); };
+
+  function autoGenerate() {
+    const gen = autoGenerateShifts(employees,year,month,wishdays,constraints,required,"staff",SHIFT_HOURS,customShifts,orderConstraints);
+    setShifts(prev=>({...prev,...gen}));
+    showMsg("✓ シフトを自動生成しました");
+  }
+
+  function exportCSV() {
+    const days = Array.from({length:daysInMonth},(_,i)=>i+1);
+    const header = ["氏名","役職",...days.map(d=>`${d}日(${DOW[getDow(year,month,d)]})`,"勤務日数","勤務時間")].join(",");
+    const rows = employees.map(emp=>{
+      const cells = days.map(d=>shifts[emp.id]?.[d]||"");
+      const wd = cells.filter(v=>!["休み","希望休",""].includes(v)).length;
+      const wh = cells.reduce((a,v)=>a+(SHIFT_HOURS[v]||0),0);
+      return [emp.name,emp.role,...cells,`${wd}日`,`${wh}h`].join(",");
+    });
+    const blob = new Blob(["\uFEFF"+[header,...rows].join("\n")],{type:"text/csv;charset=utf-8;"});
+    const a = document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download=`シフト表_${year}${fmt2(month+1)}.csv`; a.click();
+    showMsg("📥 CSVを出力しました");
+  }
+
+  function exportPDF() {
+    const days = Array.from({length:daysInMonth},(_,i)=>i+1);
+    const title = `ヘルパーステーション欅　シフト表　${year}年${month+1}月`;
+    const pillHtml = (type) => {
+      const t = SHIFT_TYPES[type] || SHIFT_TYPES["休み"];
+      return `<span style="display:inline-block;padding:1px 4px;border-radius:4px;font-size:9px;font-weight:700;background:${t.bg};color:${t.text};border:1px solid ${t.color}88;">${t.short}</span>`;
+    };
+
+    const headerCells = days.map(d => {
+      const dow = getDow(year,month,d);
+      const isSun=dow===0, isSat=dow===6;
+      const color = isSun?"#ef4444":isSat?"#3b82f6":"#475569";
+      return `<th style="width:22px;padding:3px 1px;font-size:9px;color:${color};border:1px solid #e2e8f0;background:#f8fafc;text-align:center;">${d}<br/><span style="font-size:8px">${DOW[dow]}</span></th>`;
+    }).join("");
+
+    const bodyRows = employees.map((emp,ei) => {
+      const bg = ei%2===0 ? "#ffffff" : "#f8fafc";
+      const cells = days.map(d => {
+        const type = shifts[emp.id]?.[d] || "休み";
+        return `<td style="padding:2px 1px;text-align:center;border:1px solid #e2e8f0;background:${bg};">${pillHtml(type)}</td>`;
+      }).join("");
+      const wd = days.filter(d=>!["休み","希望休"].includes(shifts[emp.id]?.[d]||"休み")).length;
+      const wh = days.reduce((a,d)=>a+(SHIFT_HOURS[shifts[emp.id]?.[d]]||0),0);
+      return `<tr style="background:${bg}">
+        <td style="padding:4px 8px;border:1px solid #e2e8f0;white-space:nowrap;font-size:11px;font-weight:600;min-width:100px;">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${emp.color};margin-right:5px;vertical-align:middle;"></span>${emp.name}
+          <span style="font-size:9px;color:#94a3b8;margin-left:4px;">${emp.role}</span>
+        </td>
+        ${cells}
+        <td style="padding:2px 5px;text-align:center;border:1px solid #e2e8f0;font-size:10px;font-weight:700;color:#0369a1;">${wd}日</td>
+        <td style="padding:2px 5px;text-align:center;border:1px solid #e2e8f0;font-size:10px;font-weight:700;color:#059669;">${wh}h</td>
+      </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>${title}</title>
+    <style>
+      body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; margin: 0; padding: 16px; background:#fff; }
+      h1 { font-size: 16px; font-weight: 900; color: #1e293b; margin: 0 0 4px; }
+      .sub { font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
+      table { border-collapse: collapse; width: 100%; font-size: 11px; }
+      .print-btn { margin-bottom:12px; padding:8px 20px; background:#e11d48; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
+      @media print { .print-btn { display:none; } @page { size: A4 landscape; margin: 10mm; } body { padding: 0; } }
+    </style></head><body>
+    <button class="print-btn" onclick="window.print()">🖨 印刷 / PDFで保存</button>
+    <h1>${title}</h1>
+    <div class="sub">出力日: ${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日</div>
+    <table>
+      <thead><tr>
+        <th style="padding:4px 8px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:10px;text-align:left;min-width:100px;">氏名</th>
+        ${headerCells}
+        <th style="padding:3px 5px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:9px;width:32px;">勤務</th>
+        <th style="padding:3px 5px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:9px;width:36px;">時間</th>
+      </tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+    </body></html>`;
+
+    const w = window.open("","_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+    showMsg("🖨 プレビューを開きました");
+  }
+
+  function setCellShift(empId,day,type) {
+    setShifts(prev=>({...prev,[empId]:{...(prev[empId]||{}),[day]:type}}));
+    setEditCell(null);
+  }
+  function toggleWish(empId,key) {
+    setWishdays(prev=>{ const s=new Set(prev[empId]||[]); s.has(key)?s.delete(key):s.add(key); return{...prev,[empId]:s}; });
+  }
+  function addEmployee() {
+    if (!newName.trim()) return;
+    const id = Date.now();
+    const color = COLORS[employees.length%COLORS.length];
+    const emp = {id,name:newName.trim(),role:"正社員",color,section:"staff"};
+    setStaffList(p=>[...p,emp]);
+    setNewName(""); showMsg("✓ 従業員を追加しました");
+  }
+  function removeEmployee(id) {
+    setStaffList(p=>p.filter(e=>e.id!==id));
+  }
+
+  const stats = useMemo(()=>employees.map(emp=>{
+    const s = shifts[emp.id]||{};
+    const workDays  = Object.values(s).filter(v=>!["休み","希望休"].includes(v)).length;
+    const workHours = Object.values(s).reduce((a,v)=>a+(SHIFT_HOURS[v]||0),0);
+    const wishOff   = Object.values(s).filter(v=>v==="希望休").length;
+    const c = constraints[emp.id]||DEFAULT_STAFF_CONSTRAINTS;
+    return{...emp,workDays,workHours,wishOff,hoursOk:workHours>=c.minWorkHours&&workHours<=c.maxWorkHours,daysOk:workDays>=c.minWorkDays&&workDays<=c.maxWorkDays};
+  }),[employees,shifts,constraints]);
+
+  // ── デザイントークン（ライトトーン） ─────────────────────
+  const C = {
+    bg:       "#f7f8fc",       // ページ背景：ごく薄い青灰
+    surface:  "#ffffff",       // カード・テーブル面
+    surface2: "#f1f5f9",       // 奥まった面・ストライプ
+    border:   "#e2e8f0",       // 境界線
+    border2:  "#cbd5e1",       // 少し濃い境界
+    text:     "#1e293b",       // メインテキスト
+    textSub:  "#64748b",       // サブテキスト
+    textMute: "#94a3b8",       // ミュート
+    accent:   "#3b82f6",       // アクセントブルー
+    accentBg: "#eff6ff",       // アクセント背景
+    green:    "#059669",
+    greenBg:  "#f0fdf4",
+    amber:    "#d97706",
+    amberBg:  "#fffbeb",
+    red:      "#dc2626",
+    redBg:    "#fff5f5",
+    header:   "#ffffff",       // ヘッダー背景
+    headerBorder: "#e2e8f0",
+  };
+
+  const S = {
+    th: (w) => ({ padding:"6px 3px", borderBottom:`2px solid ${C.border2}`, fontWeight:700, fontSize:10, textAlign:"center", minWidth:w, maxWidth:w, color:C.textMute, letterSpacing:"0.05em", background:C.surface }),
+    input: { padding:"8px 12px", borderRadius:8, border:`1px solid ${C.border}`, background:C.surface, color:C.text, fontSize:13, outline:"none", minWidth:160, boxShadow:"inset 0 1px 2px rgba(0,0,0,0.04)" },
+    label: { display:"block", fontSize:11, color:C.textSub, marginBottom:4, fontWeight:600 },
+    btnBlue:  { padding:"8px 18px", borderRadius:8, border:"none", background:C.accent,  color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap", boxShadow:"0 1px 3px rgba(59,130,246,0.3)" },
+    btnGreen: { padding:"8px 18px", borderRadius:8, border:"none", background:C.green,   color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap", boxShadow:"0 1px 3px rgba(5,150,105,0.3)" },
+    btnAmber: { padding:"8px 18px", borderRadius:8, border:"none", background:C.amber,   color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap", boxShadow:"0 1px 3px rgba(217,119,6,0.3)" },
+    btnRed:   { padding:"8px 18px", borderRadius:8, border:"none", background:"#e11d48", color:"#fff", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap", boxShadow:"0 1px 3px rgba(225,29,72,0.3)" },
+    card: { background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 18px", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" },
+  };
+
+  // ── 共通コンポーネント ────────────────────────────────────
+  function Pill({ type, small, types: override }) {
+    const map = override || shiftTypes;
+    const t = map[type] || SHIFT_TYPES["休み"];
+    return (
+      <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", padding:small?"2px 5px":"3px 9px", borderRadius:6, fontSize:small?9:11, fontWeight:700, background:t.bg, color:t.text, border:`1px solid ${t.color}55`, minWidth:small?20:28, whiteSpace:"nowrap" }}>
+        {small ? t.short : t.label}
+      </span>
+    );
+  }
+
+  function CellPicker({ empId, dayKey: dk, onClose }) {
+    const types = SHIFT_TYPES;
+    return (
+      <div style={{ position:"absolute", zIndex:200, background:C.surface, border:`1px solid ${C.border2}`, borderRadius:12, boxShadow:"0 8px 32px rgba(0,0,0,0.12)", padding:"10px 12px", display:"flex", flexDirection:"column", gap:5, minWidth:130 }}>
+        {Object.keys(types).map(t=>(
+          <button key={t} onClick={()=>setCellShift(empId,dk,t)} style={{ background:types[t].bg, color:types[t].text, border:`1px solid ${types[t].color}55`, borderRadius:7, padding:"6px 10px", cursor:"pointer", fontWeight:700, fontSize:12, textAlign:"left" }}>
+            {t} <span style={{ fontSize:9, opacity:0.55, marginLeft:4 }}>{types[t].hours}</span>
+          </button>
+        ))}
+        <button onClick={onClose} style={{ marginTop:2, fontSize:11, color:C.textMute, background:"none", border:"none", cursor:"pointer" }}>キャンセル</button>
+      </div>
+    );
+  }
+
+  // ── 月表示 ────────────────────────────────────────────────
+  function MonthView() {
+    const days = Array.from({length:daysInMonth},(_,i)=>i+1);
+    return (
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", minWidth:900, fontSize:11 }}>
+          <thead>
+            <tr>
+              <th style={{ ...S.th(150), textAlign:"left", paddingLeft:12 }}>氏名</th>
+              {days.map(d=>{
+                const dow=getDow(year,month,d);
+                const isSun=dow===0, isSat=dow===6;
+                const isToday=d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
+                return (
+                  <th key={d} style={{ ...S.th(32), color:isSun?"#ef4444":isSat?"#3b82f6":C.textMute, background:isToday?"#eff6ff":isSun?"#fff5f5":isSat?"#f0f8ff":C.surface }}>
+                    <div style={{ fontWeight:700 }}>{d}</div>
+                    <div style={{ fontSize:8 }}>{DOW[dow]}</div>
+                    {isToday && <div style={{ width:4,height:4,borderRadius:"50%",background:C.accent,margin:"1px auto 0" }} />}
+                  </th>
+                );
+              })}
+              <th style={S.th(52)}>勤務</th>
+              <th style={S.th(56)}>時間</th>
+              <th style={S.th(36)}>状態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp,ei)=>{
+              const st = stats.find(s=>s.id===emp.id);
+              return (
+                <tr key={emp.id} style={{ background:ei%2===0?C.surface:C.surface2 }}>
+                  <td style={{ padding:"5px 12px", borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <span style={{ width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontWeight:600, fontSize:12, color:C.text }}>{emp.name}</div>
+                        <div style={{ fontSize:9, color:C.textMute }}>{emp.role}</div>
+                      </div>
+                    </div>
+                  </td>
+                  {days.map(d=>{
+                    const type = shifts[emp.id]?.[d]||"休み";
+                    const cid = `${emp.id}-${d}`;
+                    const isOpen = editCell===cid;
+                    return (
+                      <td key={d} style={{ padding:"2px 1px", borderBottom:`1px solid ${C.border}`, textAlign:"center", position:"relative" }}>
+                        <button onClick={()=>setEditCell(isOpen?null:cid)} style={{ background:"none", border:"none", cursor:"pointer", padding:1 }}>
+                          <Pill type={type} small />
+                        </button>
+                        {isOpen && (
+                          <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", zIndex:200 }}>
+                            <CellPicker empId={emp.id} dayKey={d} onClose={()=>setEditCell(null)} />
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td style={{ textAlign:"center", fontWeight:700, color:st?.daysOk?C.green:C.amber, borderBottom:`1px solid ${C.border}`, fontSize:11 }}>{st?.workDays??0}日</td>
+                  <td style={{ textAlign:"center", fontWeight:700, color:st?.hoursOk?C.green:C.amber, borderBottom:`1px solid ${C.border}`, fontSize:11 }}>{st?.workHours??0}h</td>
+                  <td style={{ textAlign:"center", borderBottom:`1px solid ${C.border}` }}>
+                    {(st?.hoursOk&&st?.daysOk)
+                      ? <span style={{ color:C.green, fontSize:13 }}>✓</span>
+                      : <span style={{ color:C.amber, fontSize:13 }}>⚠</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // ── 週表示 ────────────────────────────────────────────────
+  function WeekView() {
+    return (
+      <div style={{ overflowX:"auto" }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...S.th(150), textAlign:"left", paddingLeft:12 }}>氏名</th>
+              {weekDates.map((d,i)=>{
+                const dow=d.getDay();
+                const isToday=d.toDateString()===today.toDateString();
+                return (
+                  <th key={i} style={{ ...S.th(120), color:dow===0?"#ef4444":dow===6?"#3b82f6":C.textSub, background:isToday?C.accentBg:dow===0?"#fff5f5":dow===6?"#f0f8ff":C.surface }}>
+                    <div style={{ fontWeight:700 }}>{DOW[dow]}</div>
+                    <div style={{ fontSize:10 }}>{d.getMonth()+1}/{d.getDate()}</div>
+                    {isToday && <div style={{ fontSize:9, color:C.accent, fontWeight:700 }}>TODAY</div>}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp,ei)=>(
+              <tr key={emp.id} style={{ background:ei%2===0?C.surface:C.surface2 }}>
+                <td style={{ padding:"8px 12px", borderBottom:`1px solid ${C.border}` }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0 }} />
+                    <div>
+                      <div style={{ fontWeight:600, color:C.text }}>{emp.name}</div>
+                      <div style={{ fontSize:10, color:C.textMute }}>{emp.role}</div>
+                    </div>
+                  </div>
+                </td>
+                {weekDates.map((d,i)=>{
+                  const inMonth=d.getMonth()===month&&d.getFullYear()===year;
+                  const type = inMonth?(shifts[emp.id]?.[d.getDate()]||"休み"):"休み";
+                  const cid = `w-${emp.id}-${d.toDateString()}`;
+                  const isOpen = editCell===cid;
+                  return (
+                    <td key={i} style={{ padding:"8px 6px", borderBottom:`1px solid ${C.border}`, textAlign:"center", position:"relative" }}>
+                      <button onClick={()=>inMonth&&setEditCell(isOpen?null:cid)} style={{ background:"none", border:"none", cursor:inMonth?"pointer":"default", padding:0 }}>
+                        <Pill type={type} />
+                        {inMonth&&type!=="休み"&&type!=="希望休"&&(
+                          <div style={{ fontSize:9, color:C.textMute, marginTop:2 }}>{shiftTypes[type]?.hours}</div>
+                        )}
+                      </button>
+                      {isOpen&&inMonth&&(
+                        <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)" }}>
+                          <CellPicker empId={emp.id} dayKey={d.getDate()} onClose={()=>setEditCell(null)} />
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // ── 従業員タブ ────────────────────────────────────────────
+  function EmployeeTab() {
+    return (
+      <div>
+        <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap", alignItems:"flex-end", padding:"16px", background:C.surface2, borderRadius:12, border:`1px solid ${C.border}` }}>
+          <div><label style={S.label}>氏名</label><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="新しい従業員名" style={S.input} /></div>
+          <button onClick={addEmployee} style={S.btnBlue}>＋ 追加</button>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {employees.map(emp=>{
+            const st=stats.find(s=>s.id===emp.id);
+            return (
+              <div key={emp.id} style={{ ...S.card, padding:"12px 14px" }}>
+                {/* 1行目: ドット・氏名・役職バッジ・削除ボタン */}
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                  <span style={{ width:9,height:9,borderRadius:"50%",background:emp.color,flexShrink:0 }} />
+                  <span style={{ fontWeight:700, color:C.text, fontSize:14, whiteSpace:"nowrap" }}>{emp.name}</span>
+                  <span style={{ fontSize:11, color:C.textSub, background:C.surface2, borderRadius:4, padding:"1px 7px", border:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{emp.role}</span>
+                  <button onClick={()=>removeEmployee(emp.id)} style={{ marginLeft:"auto", background:"none", border:`1px solid ${C.border}`, color:C.red, borderRadius:6, padding:"3px 10px", cursor:"pointer", fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>削除</button>
+                </div>
+                {/* 2行目: 統計 */}
+                <div style={{ display:"flex", gap:12, fontSize:12, paddingLeft:17 }}>
+                  <span style={{ color:C.textSub, whiteSpace:"nowrap" }}>勤務: <strong style={{ color:st?.daysOk?C.green:C.amber }}>{st?.workDays??0}日</strong></span>
+                  <span style={{ color:C.textSub, whiteSpace:"nowrap" }}>時間: <strong style={{ color:st?.hoursOk?C.green:C.amber }}>{st?.workHours??0}h</strong></span>
+                  <span style={{ color:C.textSub, whiteSpace:"nowrap" }}>希望休: <strong style={{ color:C.red }}>{st?.wishOff??0}件</strong></span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── 制約設定タブ ──────────────────────────────────────────
+  function ConstraintsTab() {
+    const selected = selectedConstraintId || employees[0]?.id || null;
+    const setSelected = setSelectedConstraintId;
+    const emp = employees.find(e=>e.id===selected);
+    const def = DEFAULT_STAFF_CONSTRAINTS;
+    const c = {...def,...(constraints[selected]||{})};
+    const update = (key,val) => setConstraints(prev=>({...prev,[selected]:{...(prev[selected]||def),[key]:val}}));
+    const toggleDow = dow => { const arr=c.unavailableDows.includes(dow)?c.unavailableDows.filter(d=>d!==dow):[...c.unavailableDows,dow]; update("unavailableDows",arr); };
+    const toggleShift = sh => { const arr=c.preferredShifts.includes(sh)?c.preferredShifts.filter(s=>s!==sh):[...c.preferredShifts,sh]; update("preferredShifts",arr); };
+    const numInput = (label,key,min,max) => (
+      <div>
+        <label style={S.label}>{label}</label>
+        <input type="number" value={c[key]} min={min} max={max} onChange={e=>update(key,Number(e.target.value))} style={{...S.input,minWidth:80,width:80}} />
+      </div>
+    );
+    return (
+      <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
+        <div style={{ minWidth:160, maxWidth:180 }}>
+          <div style={{ fontSize:11, color:C.textSub, fontWeight:700, marginBottom:8, letterSpacing:"0.05em" }}>従業員を選択</div>
+          {employees.map(e=>(
+            <button key={e.id} onClick={()=>setSelected(e.id)}
+              style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 10px", borderRadius:8, border:selected===e.id?`1.5px solid ${C.accent}`:`1px solid ${C.border}`, background:selected===e.id?C.accentBg:C.surface, color:C.text, cursor:"pointer", marginBottom:4, fontSize:12, fontWeight:selected===e.id?700:400, boxShadow:selected===e.id?"0 1px 4px rgba(59,130,246,0.15)":"none" }}>
+              <span style={{ width:8,height:8,borderRadius:"50%",background:e.color }} />{e.name}
+            </button>
+          ))}
+        </div>
+        {emp && (
+          <div style={{ flex:1, ...S.card }}>
+            <div style={{ fontWeight:700, color:C.text, marginBottom:16, fontSize:14 }}>
+              <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:emp.color, marginRight:8, verticalAlign:"middle" }} />
+              {emp.name} の制約設定
+            </div>
+            <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:16 }}>
+              {numInput("最小勤務日数","minWorkDays",0,31)}
+              {numInput("最大勤務日数","maxWorkDays",0,31)}
+              {numInput("最小勤務時間(h)","minWorkHours",0,300)}
+              {numInput("最大勤務時間(h)","maxWorkHours",0,300)}
+              {numInput("最大連続勤務日","maxConsecutive",1,14)}
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={S.label}>出勤不可の曜日</div>
+              <div style={{ display:"flex", gap:6 }}>
+                {DOW.map((d,i)=>(
+                  <button key={i} onClick={()=>toggleDow(i)}
+                    style={{ width:34,height:34,borderRadius:8, border:c.unavailableDows.includes(i)?`2px solid ${C.red}`:`1px solid ${C.border}`, background:c.unavailableDows.includes(i)?C.redBg:C.surface2, color:i===0?"#ef4444":i===6?"#3b82f6":C.text, cursor:"pointer", fontWeight:700, fontSize:12 }}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom:16 }}>
+                <div style={S.label}>担当可能シフト</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {customShifts.map(sh=>(
+                    <button key={sh.key} onClick={()=>toggleShift(sh.key)}
+                      style={{ padding:"6px 14px", borderRadius:8, border:c.preferredShifts.includes(sh.key)?`2px solid ${SHIFT_TYPES[sh.key]?.color}`:`1px solid ${C.border}`, background:c.preferredShifts.includes(sh.key)?SHIFT_TYPES[sh.key]?.bg:C.surface2, color:c.preferredShifts.includes(sh.key)?SHIFT_TYPES[sh.key]?.text:C.textSub, cursor:"pointer", fontWeight:700, fontSize:12 }}>
+                      {sh.key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            <div style={{ padding:"10px 14px", background:C.surface2, borderRadius:8, fontSize:11, color:C.textSub, border:`1px solid ${C.border}` }}>
+              <strong style={{ color:C.textSub }}>順序制約（固定）：</strong> 早番の翌日に夜勤不可 / 夜勤の翌日に早番不可
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── 必要人数タブ ──────────────────────────────────────────
+  function RequiredTab() {
+    return (
+      <div>
+        <p style={{ color:C.textSub, fontSize:13, marginTop:0 }}>1日あたりの必要人数を設定します。自動生成時にこの人数を確保しようとします。</p>
+        <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:24 }}>
+          {customShifts.map(type=>(
+            <div key={type.key} style={{ ...S.card, minWidth:140 }}>
+              <div style={{ marginBottom:12 }}><Pill type={type.key} types={SHIFT_TYPES} /></div>
+              <div style={S.label}>必要人数</div>
+              <input type="number" min={0} max={employees.length} value={required[type.key]||0}
+                onChange={e=>setRequired(p=>({...p,[type.key]:Number(e.target.value)}))}
+                style={{...S.input,width:80,minWidth:80}} />
+              <div style={{ fontSize:10, color:C.textMute, marginTop:6 }}>{SHIFT_TYPES[type.key]?.hours}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* 順序制約（編集可能） */}
+        <div style={{ ...S.card }}>
+          <div style={{ fontWeight:700, color:C.text, marginBottom:4, fontSize:13 }}>順序制約の設定</div>
+          <p style={{ color:C.textSub, fontSize:12, marginBottom:14 }}>「前日のシフト」の行で、翌日に入れたくないシフトをON/OFFできます。</p>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ borderCollapse:"collapse", fontSize:12, width:"100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...S.th(80), textAlign:"left", paddingLeft:8 }}>前日↓ 翌日→</th>
+                  {customShifts.map(s=>(
+                    <th key={s.key} style={S.th(60)}>
+                      <Pill type={s.key} types={SHIFT_TYPES} small />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {customShifts.map((from,fi)=>(
+                  <tr key={from.key} style={{ background: fi%2===0?C.surface:C.surface2 }}>
+                    <td style={{ padding:"6px 8px", borderBottom:`1px solid ${C.border}` }}>
+                      <Pill type={from.key} types={SHIFT_TYPES} />
+                    </td>
+                    {customShifts.map(to=>{
+                      const isSelf = from.key===to.key;
+                      const isOn = (orderConstraints[from.key]||[]).includes(to.key);
+                      return (
+                        <td key={to.key} style={{ textAlign:"center", padding:"6px 4px", borderBottom:`1px solid ${C.border}` }}>
+                          {isSelf ? (
+                            <span style={{ color:C.textMute, fontSize:11 }}>—</span>
+                          ) : (
+                            <button onClick={()=>{
+                              setOrderConstraints(prev=>{
+                                const cur = prev[from.key]||[];
+                                const next = isOn ? cur.filter(x=>x!==to.key) : [...cur,to.key];
+                                return {...prev,[from.key]:next};
+                              });
+                            }} style={{
+                              width:32, height:28, borderRadius:6, cursor:"pointer", fontWeight:700, fontSize:11,
+                              border: isOn?`2px solid ${C.red}`:`1px solid ${C.border}`,
+                              background: isOn?C.redBg:C.surface,
+                              color: isOn?C.red:C.textMute,
+                            }}>
+                              {isOn?"✕":""}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ marginTop:10, fontSize:11, color:C.textMute }}>✕ = 前日のシフトの翌日には入れない</div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 週間ガントタブ ────────────────────────────────────────
+  function GanttView() {
+    const [ganttBase, setGanttBase] = useState(() => new Date(year, month, 1));
+    const gWeekDates = getWeekDates(ganttBase);
+
+    const HOURS = Array.from({length:19},(_,i)=>i+6);
+    const TOTAL_HOURS = 19;
+    const NAME_W = 110;
+    const CELL_W = 36;
+
+    // customShiftsから動的にSHIFT_SPANとGANTT_COLORを生成
+    const SHIFT_SPAN = {};
+    const GANTT_COLOR = {};
+    customShifts.forEach(s => {
+      SHIFT_SPAN[s.key] = { start: s.startH, end: s.endH };
+      GANTT_COLOR[s.key] = s.color;
+    });
+
+    return (
+      <div>
+        {/* ナビ */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+          <button onClick={()=>{const d=new Date(ganttBase);d.setDate(d.getDate()-7);setGanttBase(d);}} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub }}>‹</button>
+          <span style={{ fontWeight:800, fontSize:14, color:C.text }}>
+            {gWeekDates[0].getMonth()+1}/{gWeekDates[0].getDate()}（{DOW[gWeekDates[0].getDay()]}）〜 {gWeekDates[6].getMonth()+1}/{gWeekDates[6].getDate()}（{DOW[gWeekDates[6].getDay()]}）
+          </span>
+          <button onClick={()=>{const d=new Date(ganttBase);d.setDate(d.getDate()+7);setGanttBase(d);}} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub }}>›</button>
+        </div>
+
+        {/* 凡例 */}
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          {Object.entries(GANTT_COLOR).map(([type,color])=>(
+            <span key={type} style={{ display:"inline-flex",alignItems:"center",gap:5,fontSize:11,color:C.textSub }}>
+              <span style={{ width:18,height:10,borderRadius:3,background:color,display:"inline-block" }}/>
+              {type} {SHIFT_TYPES[type].hours}
+            </span>
+          ))}
+        </div>
+
+        <div style={{ overflowX:"auto" }}>
+          {gWeekDates.map((date, di) => {
+            const inMonth = date.getMonth()===month && date.getFullYear()===year;
+            const dow = date.getDay();
+            const isSun=dow===0, isSat=dow===6;
+            const dayColor = isSun?"#ef4444":isSat?"#3b82f6":C.text;
+            const dayBg = isSun?"#fff5f5":isSat?"#eff6ff":C.surface2;
+
+            return (
+              <div key={di} style={{ marginBottom:12 }}>
+                {/* 日付ヘッダー行 */}
+                <div style={{ display:"flex", alignItems:"stretch", minWidth: NAME_W + CELL_W*TOTAL_HOURS }}>
+                  {/* 日付セル */}
+                  <div style={{ width:NAME_W, minWidth:NAME_W, background:dayBg, border:`1px solid ${C.border}`, borderRight:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:4, padding:"5px 8px" }}>
+                    <span style={{ fontWeight:800, fontSize:15, color:dayColor }}>{date.getDate()}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:dayColor }}>{DOW[dow]}</span>
+                  </div>
+                  {/* 時間ヘッダー */}
+                  {HOURS.map(h=>(
+                    <div key={h} style={{ width:CELL_W, minWidth:CELL_W, textAlign:"center", fontSize:9, fontWeight:600, color:C.textMute, background:dayBg, border:`1px solid ${C.border}`, borderRight: h===23?"1px solid "+C.border:"none", padding:"5px 0", borderLeft: h===6?"none":"1px solid "+C.border2 }}>
+                      {h}:00
+                    </div>
+                  ))}
+                </div>
+
+                {/* 各従業員の行 */}
+                {employees.map((emp, ei) => {
+                  const shiftType = inMonth ? (shifts[emp.id]?.[date.getDate()]||"休み") : "休み";
+                  const span = SHIFT_SPAN[shiftType];
+                  const isOff = !span;
+
+                  return (
+                    <div key={emp.id} style={{ display:"flex", alignItems:"stretch", minWidth: NAME_W + CELL_W*TOTAL_HOURS, background: ei%2===0?C.surface:"#fafbfd" }}>
+                      {/* 氏名 */}
+                      <div style={{ width:NAME_W, minWidth:NAME_W, display:"flex", alignItems:"center", gap:6, padding:"4px 8px", borderLeft:`1px solid ${C.border}`, borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ width:7,height:7,borderRadius:"50%",background:emp.color,flexShrink:0 }}/>
+                        <span style={{ fontSize:11, fontWeight:600, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{emp.name}</span>
+                      </div>
+
+                      {/* タイムライン */}
+                      <div style={{ position:"relative", width:CELL_W*TOTAL_HOURS, minWidth:CELL_W*TOTAL_HOURS, height:28, borderBottom:`1px solid ${C.border}`, borderRight:`1px solid ${C.border}` }}>
+                        {/* グリッド線 */}
+                        {HOURS.map((h,hi)=>(
+                          <div key={h} style={{ position:"absolute", left:hi*CELL_W, top:0, width:1, height:"100%", background: h%3===0?C.border2:C.border, opacity:0.5 }}/>
+                        ))}
+
+                        {/* シフトバー */}
+                        {span && (
+                          (() => {
+                            const startH = Math.max(span.start, 6);
+                            const endH   = Math.min(span.end, 25); // 翌1:00まで表示
+                            const leftPx  = (startH - 6) * CELL_W;
+                            const widthPx = (endH - startH) * CELL_W;
+                            return (
+                              <div style={{
+                                position:"absolute",
+                                left:leftPx,
+                                top:4,
+                                width:widthPx,
+                                height:20,
+                                borderRadius:5,
+                                background:GANTT_COLOR[shiftType],
+                                opacity:0.85,
+                                display:"flex",
+                                alignItems:"center",
+                                justifyContent:"center",
+                                fontSize:9,
+                                fontWeight:700,
+                                color:"#fff",
+                                letterSpacing:"0.02em",
+                                boxShadow:"0 1px 3px rgba(0,0,0,0.15)",
+                                overflow:"hidden",
+                                whiteSpace:"nowrap",
+                              }}>
+                                {shiftType}
+                              </div>
+                            );
+                          })()
+                        )}
+                        {shiftType==="希望休" && (
+                          <div style={{ position:"absolute", left:4, top:6, fontSize:10, color:C.red, fontWeight:700 }}>希望休</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── シフト種別管理タブ ─────────────────────────────────────
+  function ShiftTypesTab() {
+    const EMPTY = { key:"", label:"", short:"", startH:9, endH:18, ...PILL_COLORS[0] };
+    const [form, setForm]     = useState(EMPTY);
+    const [editKey, setEditKey] = useState(null); // null=新規, key=編集中
+
+    const fmt = h => `${fmt2(h % 24)}:00`;
+    const hours = Array.from({length:25},(_,i)=>i);
+
+    function openEdit(s) {
+      setForm({ ...s });
+      setEditKey(s.key);
+    }
+    function openNew() {
+      setForm({ ...EMPTY, ...PILL_COLORS[customShifts.length % PILL_COLORS.length] });
+      setEditKey(null);
+    }
+    function save() {
+      if (!form.key.trim() || !form.label.trim() || !form.short.trim()) {
+        showMsg("⚠ キー・名称・略称を入力してください"); return;
+      }
+      if (editKey === null) {
+        // 新規追加
+        if (customShifts.find(s=>s.key===form.key.trim())) { showMsg("⚠ 同じキーが既に存在します"); return; }
+        setCustomShifts(p=>[...p, { ...form, key:form.key.trim() }]);
+      } else {
+        // 編集
+        setCustomShifts(p=>p.map(s=>s.key===editKey ? { ...form, key:editKey } : s));
+      }
+      setForm(EMPTY); setEditKey(null);
+      showMsg("✓ シフト種別を保存しました");
+    }
+    function remove(key) {
+      setCustomShifts(p=>p.filter(s=>s.key!==key));
+      showMsg("✓ 削除しました");
+    }
+
+    const fi = (label, field, placeholder) => (
+      <div>
+        <label style={S.label}>{label}</label>
+        <input value={form[field]} onChange={e=>setForm(p=>({...p,[field]:e.target.value}))}
+          placeholder={placeholder} style={{...S.input, minWidth:0, width:"100%"}} />
+      </div>
+    );
+
+    return (
+      <div>
+        <p style={{ color:C.textSub, fontSize:13, marginTop:0 }}>
+          シフト種別の追加・編集・削除ができます。「休み」「希望休」は変更できません。
+        </p>
+
+        {/* 既存一覧 */}
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
+          {customShifts.map(s => {
+            const isEditing = editKey===s.key;
+            return (
+              <div key={s.key} style={{ ...S.card, padding:"12px 16px", border: isEditing?`2px solid ${s.color}`:`1px solid ${C.border}` }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                  {/* ピル */}
+                  <span style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"4px 12px",borderRadius:7,fontSize:13,fontWeight:700,background:s.bg,color:s.text,border:`1px solid ${s.color}55`,whiteSpace:"nowrap",minWidth:56 }}>
+                    {s.label}
+                  </span>
+                  {/* 略称 */}
+                  <span style={{ fontSize:12,color:C.textSub }}>{s.short}</span>
+                  {/* 時間 */}
+                  <span style={{ fontSize:12,color:C.textSub,background:C.surface2,borderRadius:5,padding:"2px 8px",border:`1px solid ${C.border}` }}>
+                    {fmt(s.startH)} 〜 {fmt(s.endH)} ({s.endH-s.startH}h)
+                  </span>
+                  <div style={{ marginLeft:"auto", display:"flex", gap:6 }}>
+                    <button onClick={()=>isEditing?(setEditKey(null)):openEdit(s)}
+                      style={{ padding:"4px 14px",borderRadius:7,border:`1px solid ${C.accent}`,background:isEditing?C.accentBg:C.surface,color:C.accent,cursor:"pointer",fontSize:12,fontWeight:700 }}>
+                      {isEditing?"✕ 閉じる":"✏ 編集"}
+                    </button>
+                    <button onClick={()=>remove(s.key)}
+                      style={{ padding:"4px 14px",borderRadius:7,border:`1px solid ${C.border}`,background:C.surface,color:C.red,cursor:"pointer",fontSize:12 }}>
+                      削除
+                    </button>
+                  </div>
+                </div>
+
+                {/* インライン編集フォーム */}
+                {isEditing && (
+                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+                    <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:12 }}>
+                      <div style={{ flex:"1 1 120px" }}>{fi("名称","label","例: 早番")}</div>
+                      <div style={{ flex:"1 1 70px" }}>{fi("略称（1文字）","short","早")}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:12 }}>
+                      <div style={{ flex:"1 1 100px" }}>
+                        <label style={S.label}>開始時刻</label>
+                        <select value={form.startH} onChange={e=>setForm(p=>({...p,startH:Number(e.target.value)}))} style={{...S.input,minWidth:0,width:"100%"}}>
+                          {hours.map(h=><option key={h} value={h}>{fmt2(h)}:00</option>)}
+                        </select>
+                      </div>
+                      <div style={{ flex:"1 1 100px" }}>
+                        <label style={S.label}>終了時刻</label>
+                        <select value={form.endH} onChange={e=>setForm(p=>({...p,endH:Number(e.target.value)}))} style={{...S.input,minWidth:0,width:"100%"}}>
+                          {hours.filter(h=>h>0).map(h=><option key={h} value={h}>{h>=24?`翌${fmt2(h-24)}:00`:fmt2(h)+":00"}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom:12 }}>
+                      <label style={S.label}>カラー</label>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                        {PILL_COLORS.map((pc,i)=>(
+                          <button key={i} onClick={()=>setForm(p=>({...p,...pc}))}
+                            style={{ width:32,height:32,borderRadius:8,background:pc.bg,border:form.color===pc.color?`2px solid ${pc.color}`:`1px solid ${pc.color}55`,cursor:"pointer",position:"relative" }}>
+                            <span style={{ display:"block",width:12,height:12,borderRadius:"50%",background:pc.color,margin:"auto" }}/>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* プレビュー */}
+                    <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12 }}>
+                      <span style={{ fontSize:11,color:C.textSub }}>プレビュー:</span>
+                      <span style={{ display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:7,fontSize:12,fontWeight:700,background:form.bg,color:form.text,border:`1px solid ${form.color}55` }}>
+                        {form.label||"名称"} <span style={{ marginLeft:6,fontSize:10,opacity:0.6 }}>{form.startH!==undefined?`${fmt2(form.startH)}:00-${form.endH>=24?`翌${fmt2(form.endH-24)}:00`:fmt2(form.endH)+":00"}`:""}</span>
+                      </span>
+                    </div>
+                    <button onClick={save} style={{...S.btnBlue}}>💾 保存</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 固定種別 */}
+          {Object.entries(FIXED_TYPES).map(([key,t])=>(
+            <div key={key} style={{ ...S.card, padding:"12px 16px", opacity:0.6 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"4px 12px",borderRadius:7,fontSize:13,fontWeight:700,background:t.bg,color:t.text,border:`1px solid ${t.color}55`,minWidth:56 }}>{t.label}</span>
+                <span style={{ fontSize:11,color:C.textMute }}>固定（変更不可）</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 新規追加フォーム */}
+        <div style={{ ...S.card, border:`2px dashed ${C.border2}` }}>
+          <div style={{ fontWeight:700, color:C.text, marginBottom:14, fontSize:13 }}>＋ 新しいシフト種別を追加</div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:12 }}>
+            <div style={{ flex:"1 1 100px" }}>{fi("キー（内部ID）","key","例: 準夜")}</div>
+            <div style={{ flex:"1 1 120px" }}>{fi("名称","label","例: 準夜勤")}</div>
+            <div style={{ flex:"1 1 70px" }}>{fi("略称","short","準")}</div>
+          </div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:12 }}>
+            <div style={{ flex:"1 1 100px" }}>
+              <label style={S.label}>開始時刻</label>
+              <select value={form.startH} onChange={e=>setForm(p=>({...p,startH:Number(e.target.value)}))} style={{...S.input,minWidth:0,width:"100%"}}>
+                {hours.map(h=><option key={h} value={h}>{fmt2(h)}:00</option>)}
+              </select>
+            </div>
+            <div style={{ flex:"1 1 100px" }}>
+              <label style={S.label}>終了時刻</label>
+              <select value={form.endH} onChange={e=>setForm(p=>({...p,endH:Number(e.target.value)}))} style={{...S.input,minWidth:0,width:"100%"}}>
+                {hours.filter(h=>h>0).map(h=><option key={h} value={h}>{h>=24?`翌${fmt2(h-24)}:00`:fmt2(h)+":00"}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <label style={S.label}>カラー</label>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+              {PILL_COLORS.map((pc,i)=>(
+                <button key={i} onClick={()=>setForm(p=>({...p,...pc}))}
+                  style={{ width:32,height:32,borderRadius:8,background:pc.bg,border:form.color===pc.color?`2px solid ${pc.color}`:`1px solid ${pc.color}55`,cursor:"pointer" }}>
+                  <span style={{ display:"block",width:12,height:12,borderRadius:"50%",background:pc.color,margin:"auto" }}/>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12 }}>
+            <span style={{ fontSize:11,color:C.textSub }}>プレビュー:</span>
+            <span style={{ display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:7,fontSize:12,fontWeight:700,background:form.bg,color:form.text,border:`1px solid ${form.color}55` }}>
+              {form.label||"名称"} <span style={{ marginLeft:6,fontSize:10,opacity:0.6 }}>{fmt2(form.startH)}:00-{form.endH>=24?`翌${fmt2(form.endH-24)}:00`:fmt2(form.endH)+":00"}</span>
+            </span>
+          </div>
+          <button onClick={()=>{setEditKey(null);save();}} style={S.btnBlue}>＋ 追加</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── レイアウト ────────────────────────────────────────────
+  const headerLabel = view==="month"
+    ? `${year}年 ${month+1}月`
+    : `${weekDates[0].getMonth()+1}/${weekDates[0].getDate()} 〜 ${weekDates[6].getMonth()+1}/${weekDates[6].getDate()}`;
+
+  const TABS = [["shift","シフト表"],["gantt","週間ガント"],["wish","希望休"],["shifttypes","シフト種別"],["required","必要人数"],["constraints","個人制約"],["employee","従業員管理"]];
+
+  return (
+    <div style={{ fontFamily:"'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif", background:C.bg, minHeight:"100vh", color:C.text }}
+      onClick={()=>editCell&&setEditCell(null)}>
+
+      {/* ═ ヘッダー ══════════════════════════════════════════ */}
+      <div style={{ background:C.header, borderBottom:`1px solid ${C.headerBorder}`, padding:"14px 24px 0", boxShadow:"0 1px 6px rgba(0,0,0,0.06)" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10, marginBottom:12 }}>
+          <div>
+            <h1 style={{ margin:0, fontSize:20, fontWeight:900, color:C.text, letterSpacing:"-0.03em" }}>
+              ヘルパーステーション欅　シフト表
+            </h1>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+            {msg && (
+              <span style={{ fontSize:12, color:C.green, fontWeight:700, background:C.greenBg, border:`1px solid ${C.green}44`, borderRadius:6, padding:"4px 12px" }}>
+                {msg}
+              </span>
+            )}
+            <button onClick={autoGenerate} style={S.btnGreen}>⚡ 自動生成</button>
+            <button onClick={exportCSV}    style={S.btnAmber}>📥 CSV出力</button>
+            <button onClick={exportPDF}    style={S.btnRed}>🖨 プレビュー</button>
+          </div>
+        </div>
+
+        {/* セクション切り替えなし - スタッフのみ */}
+      </div>
+
+      {/* ═ サブヘッダー（タブ） ══════════════════════════════ */}
+      <div style={{ background:C.bg, borderBottom:`1px solid ${C.border}`, padding:"0 24px", display:"flex", gap:2, overflowX:"auto" }}>
+        {TABS.map(([key,label])=>(
+          <button key={key} onClick={()=>setMainTab(key)}
+            style={{ padding:"10px 16px", border:"none", background:"none", color:mainTab===key?C.accent:C.textSub, fontWeight:mainTab===key?700:500, cursor:"pointer", fontSize:12, borderBottom:mainTab===key?`2px solid ${C.accent}`:"2px solid transparent", transition:"all 0.15s", whiteSpace:"nowrap", flexShrink:0 }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ═ コンテンツ ════════════════════════════════════════ */}
+      <div style={{ background:C.surface, margin:"16px", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", padding:20 }}>
+        {/* シフト表ナビ */}
+        {mainTab==="shift" && (
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, flexWrap:"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6, background:C.surface2, borderRadius:9, padding:"4px 8px", border:`1px solid ${C.border}` }}>
+              <button onClick={()=>{ if(view==="week"){const nd=new Date(currentDate);nd.setDate(nd.getDate()-7);setCurrentDate(nd);}else setCurrentDate(new Date(year,month-1,1)); }} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub,padding:"0 4px" }}>‹</button>
+              <span style={{ fontWeight:800,fontSize:14,color:C.text,minWidth:180,textAlign:"center" }}>{headerLabel}</span>
+              <button onClick={()=>{ if(view==="week"){const nd=new Date(currentDate);nd.setDate(nd.getDate()+7);setCurrentDate(nd);}else setCurrentDate(new Date(year,month+1,1)); }} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub,padding:"0 4px" }}>›</button>
+            </div>
+            <div style={{ display:"flex", gap:3, background:C.surface2, borderRadius:9, padding:3, border:`1px solid ${C.border}` }}>
+              {["month","week"].map(v=>(
+                <button key={v} onClick={()=>setView(v)}
+                  style={{ padding:"6px 14px", borderRadius:7, border:"none", background:view===v?C.accent:"transparent", color:view===v?"#fff":C.textSub, fontWeight:700, cursor:"pointer", fontSize:12, transition:"all 0.15s" }}>
+                  {v==="month"?"月表示":"週表示"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginLeft:"auto" }}>
+              {Object.entries(shiftTypes).map(([k,v])=>(
+                <span key={k} style={{ display:"inline-flex", alignItems:"center", fontSize:10, color:v.text, background:v.bg, border:`1px solid ${v.color}55`, borderRadius:6, padding:"2px 9px", fontWeight:700 }}>{k}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 希望休ナビ */}
+        {mainTab==="wish" && (
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+            <button onClick={()=>setWishDate(new Date(wishDate.getFullYear(),wishDate.getMonth()-1,1))} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub }}>‹</button>
+            <span style={{ fontWeight:800,fontSize:14,color:C.text }}>{wishDate.getFullYear()}年 {wishDate.getMonth()+1}月</span>
+            <button onClick={()=>setWishDate(new Date(wishDate.getFullYear(),wishDate.getMonth()+1,1))} style={{ background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub }}>›</button>
+          </div>
+        )}
+
+        <div onClick={e=>e.stopPropagation()}>
+          {mainTab==="shift"&&view==="month"&&<MonthView />}
+          {mainTab==="shift"&&view==="week"&&<WeekView />}
+          {mainTab==="gantt"&&<GanttView />}
+          {mainTab==="wish"&&<WishTabComponent wishDate={wishDate} employees={employees} wishdays={wishdays} toggleWish={toggleWish} C={C} S={S} />}
+          {mainTab==="shifttypes"&&<ShiftTypesTab />}
+          {mainTab==="employee"&&<EmployeeTab />}
+          {mainTab==="constraints"&&<ConstraintsTab />}
+          {mainTab==="required"&&<RequiredTab />}
+        </div>
+      </div>
+
+      {/* ═ フッター統計 ══════════════════════════════════════ */}
+      {mainTab==="shift" && (
+        <div style={{ padding:"0 16px 24px", display:"flex", gap:10, flexWrap:"wrap" }}>
+          {Object.entries(shiftTypes).filter(([k])=>!["休み","希望休"].includes(k)).map(([type,info])=>{
+            const count = employees.reduce((acc,emp)=>{
+              if(view==="month") return acc+Object.values(shifts[emp.id]||{}).filter(v=>v===type).length;
+              return acc+weekDates.reduce((a,d)=>{
+                if(d.getMonth()!==month||d.getFullYear()!==year)return a;
+                return a+(shifts[emp.id]?.[d.getDate()]===type?1:0);
+              },0);
+            },0);
+            return (
+              <div key={type} style={{ background:info.bg, border:`1px solid ${info.color}44`, borderRadius:12, padding:"10px 18px", minWidth:90, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+                <div style={{ fontSize:11, color:info.text, fontWeight:700 }}>{type}</div>
+                <div style={{ fontSize:24, fontWeight:900, color:info.text, lineHeight:1.1 }}>{count}</div>
+                <div style={{ fontSize:10, color:info.text, opacity:0.5 }}>コマ数</div>
+              </div>
+            );
+          })}
+          <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"10px 18px", minWidth:110, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize:11, color:C.textSub, fontWeight:700 }}>制約違反</div>
+            <div style={{ fontSize:24, fontWeight:900, color:stats.some(s=>!s.hoursOk||!s.daysOk)?C.amber:C.green, lineHeight:1.1 }}>
+              {stats.filter(s=>!s.hoursOk||!s.daysOk).length}名
+            </div>
+            <div style={{ fontSize:10, color:C.textMute }}>要確認</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ShiftApp));
+  </script>
+  <script>
+    window.addEventListener("load", function() {
+      try {
+        var src = document.getElementById("app-src").textContent;
+        var out = Babel.transform(src, { presets: ["react"] }).code;
+        eval(out);
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("root").style.display = "block";
+      } catch(e) {
+        document.getElementById("loading").innerHTML = "<div style=\"color:#ef4444;padding:20px;font-size:13px\">エラー: " + e.message + "</div>";
+        console.error(e);
+      }
+    });
+  </script>
+</body>
+</html>
