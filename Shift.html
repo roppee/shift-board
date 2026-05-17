@@ -293,6 +293,46 @@ function autoGenerate(employees, year, month, wishdays, constraints, required, s
   return result;
 }
 
+// ── 候補評価（アラート数計算） ────────────────────────────
+function computeAlertsForShifts(shifts, staffList, customShifts, required, constraints, SHIFT_HOURS, orderConstraints, year, month, daysInMonth) {
+  const isWork = v => !["休み","希望休"].includes(v);
+
+  let staffingCount = 0;
+  for (let d=1; d<=daysInMonth; d++) {
+    customShifts.forEach(s => {
+      const needed = required[s.key] || 0;
+      if (!needed) return;
+      const actual = staffList.filter(emp => shifts[emp.id]?.[d] === s.key).length;
+      if (actual < needed) staffingCount++;
+    });
+  }
+
+  let constraintCount = 0;
+  staffList.forEach(emp => {
+    const es = shifts[emp.id] || {};
+    const c  = constraints[emp.id] || DEFAULT_CONSTRAINTS;
+    const workDays  = Object.values(es).filter(isWork).length;
+    const workHours = Object.values(es).reduce((a, v) => a + (SHIFT_HOURS[v] || 0), 0);
+    const reasons = [];
+    if (workDays  < c.minWorkDays)  reasons.push(1);
+    if (workDays  > c.maxWorkDays)  reasons.push(1);
+    if (workHours < c.minWorkHours) reasons.push(1);
+    if (workHours > c.maxWorkHours) reasons.push(1);
+    let maxConsec = 0, cur = 0;
+    for (let d=1; d<=daysInMonth; d++) {
+      if (isWork(es[d]||"休み")) { cur++; maxConsec=Math.max(maxConsec,cur); } else { cur=0; }
+    }
+    if (maxConsec > c.maxConsecutive) reasons.push(1);
+    for (let d=2; d<=daysInMonth; d++) {
+      const p=es[d-1], q=es[d];
+      if (p && q && (orderConstraints[p]||[]).includes(q)) reasons.push(1);
+    }
+    if (reasons.length > 0) constraintCount++;
+  });
+
+  return { staffingCount, constraintCount, total: staffingCount + constraintCount };
+}
+
 // ── コンテキスト ──────────────────────────────────────────
 const ShiftContext = createContext(null);
 const useShift = () => useContext(ShiftContext);
@@ -1073,6 +1113,98 @@ function PersonalTab() {
   );
 }
 
+// ── 候補生成モーダル ──────────────────────────────────────
+function CandidatesModal({ candidates, onAdopt, onClose, onRegenerate }) {
+  const { customShifts, SHIFT_TYPES } = useShift();
+  const [genCount, setGenCount] = useState(5);
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:400,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 12px",overflowY:"auto"}} onClick={onClose}>
+      <div style={{background:C.surface,borderRadius:16,padding:"20px 22px",width:"100%",maxWidth:620,boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}} onClick={e=>e.stopPropagation()}>
+
+        {/* ヘッダー */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+          <div style={{fontWeight:900,fontSize:15,marginRight:4}}>🎲 候補シフト一覧</div>
+          <div style={{fontSize:11,color:C.textSub,flex:1}}>アラートの少ない順に表示</div>
+          <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{fontSize:11,color:C.textSub}}>生成数:</span>
+            {[3,5,10].map(n => (
+              <button key={n} onClick={() => setGenCount(n)}
+                style={{padding:"4px 10px",borderRadius:6,border:genCount===n?`2px solid ${C.accent}`:`1px solid ${C.border}`,background:genCount===n?C.accentBg:C.surface2,color:genCount===n?C.accent:C.textSub,fontWeight:genCount===n?700:400,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+                {n}
+              </button>
+            ))}
+            <button onClick={() => onRegenerate(genCount)} style={{...S.btn(C.accent),padding:"5px 12px",fontSize:12}}>再生成</button>
+            <button onClick={onClose} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`,padding:"5px 12px",fontSize:12}}>閉じる</button>
+          </div>
+        </div>
+
+        {/* 候補リスト */}
+        {candidates.length === 0 ? (
+          <div style={{textAlign:"center",padding:"40px",color:C.textMute,background:C.surface2,borderRadius:10}}>候補がありません</div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {candidates.map((cand, i) => {
+              const isTop  = i === 0;
+              const total  = cand.alerts.total;
+              const aColor = total === 0 ? C.green : total < 5 ? C.amber : C.red;
+              const aBg    = total === 0 ? C.greenBg : total < 5 ? C.amberBg : C.redBg;
+
+              // シフト別過不足サマリ
+              const shiftSummary = customShifts.map(s => {
+                const days = cand.daysInMonth;
+                let shortage = 0, days_short = 0;
+                for (let d=1; d<=days; d++) {
+                  const needed = cand.requiredMap[s.key] || 0;
+                  const actual = cand.staffList.filter(e => cand.shifts[e.id]?.[d] === s.key).length;
+                  if (actual < needed) { shortage += needed - actual; days_short++; }
+                }
+                return { key:s.key, shortage, days_short };
+              }).filter(x => x.shortage > 0);
+
+              return (
+                <div key={i} style={{borderRadius:12,border:isTop?`2px solid ${C.green}`:`1px solid ${C.border}`,padding:"14px 16px",background:isTop?`${C.green}0a`:C.surface,position:"relative"}}>
+                  {isTop && <div style={{position:"absolute",top:-10,left:16,background:C.green,color:"#fff",fontSize:9,fontWeight:800,borderRadius:5,padding:"2px 9px",letterSpacing:"0.04em"}}>BEST</div>}
+                  <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                    <div style={{fontWeight:800,fontSize:20,color:isTop?C.green:C.textMute,minWidth:32}}>#{i+1}</div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:shiftSummary.length?6:0}}>
+                        <span style={{padding:"4px 12px",borderRadius:8,fontSize:12,fontWeight:700,background:aBg,color:aColor,border:`1px solid ${aColor}33`}}>
+                          {total === 0 ? "✓ アラートなし" : `⚠ ${total}件`}
+                        </span>
+                        {total > 0 && <>
+                          <span style={{fontSize:11,color:C.textSub}}>人員不足 {cand.alerts.staffingCount}件</span>
+                          <span style={{fontSize:11,color:C.textSub}}>制約違反 {cand.alerts.constraintCount}件</span>
+                        </>}
+                      </div>
+                      {shiftSummary.length > 0 && (
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {shiftSummary.map(x => {
+                            const t = SHIFT_TYPES[x.key];
+                            return (
+                              <span key={x.key} style={{fontSize:10,padding:"1px 7px",borderRadius:5,background:t?.bg||C.surface2,color:t?.text||C.textSub,border:`1px solid ${t?.color||C.border}55`}}>
+                                {x.key}: {x.days_short}日不足
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => { onAdopt(cand); onClose(); }}
+                      style={{...S.btn(isTop?C.green:C.accent),padding:"8px 20px",flexShrink:0}}>
+                      採用
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── メインアプリ ───────────────────────────────────────────
 function App() {
   const today = new Date();
@@ -1100,6 +1232,8 @@ function App() {
   const [savedMonths,      setSavedMonths]      = useState(saved.savedMonths || {});
   const [fixedRules,       setFixedRules]       = useState(saved.fixedRules || []);
   const [msg,              setMsg]              = useState("");
+  const [candidates,       setCandidates]       = useState([]);
+  const [showCandidates,   setShowCandidates]   = useState(false);
 
   const SHIFT_TYPES = useMemo(() => {
     const obj = {};
@@ -1264,6 +1398,47 @@ function App() {
       return next;
     });
     showMsg("✓ シフトを自動生成しました");
+  }
+
+  function runCandidateGeneration(n = 5) {
+    const lockedInitial = {};
+    staffList.forEach(emp => {
+      const locked = lockedCells[emp.id] || new Set();
+      lockedInitial[emp.id] = {};
+      locked.forEach(d => { const cur=staffShifts[emp.id]?.[d]; if (cur) lockedInitial[emp.id][d]=cur; });
+    });
+
+    const results = [];
+    for (let i=0; i<n; i++) {
+      const gen = autoGenerate(staffList, year, month, wishdays, constraints, required, SHIFT_HOURS, customShifts, orderConstraints, lockedInitial, prevMonthTail, fixedRules);
+      const alerts = computeAlertsForShifts(gen, staffList, customShifts, required, constraints, SHIFT_HOURS, orderConstraints, year, month, daysInMonth);
+      results.push({ shifts:gen, alerts, daysInMonth, staffList, requiredMap:required });
+    }
+
+    results.sort((a, b) => a.alerts.total - b.alerts.total);
+
+    const seen = new Set();
+    const unique = results.filter(r => {
+      const fp = staffList.slice(0,4).map(e =>
+        Array.from({length:Math.min(7,daysInMonth)},(_,d)=>r.shifts[e.id]?.[d+1]||"").join(",")
+      ).join("|");
+      if (seen.has(fp)) return false;
+      seen.add(fp);
+      return true;
+    });
+
+    setCandidates(unique);
+    setShowCandidates(true);
+    showMsg(`✓ ${unique.length}件の候補を生成しました`);
+  }
+
+  function adoptCandidate(candidate) {
+    setStaffShifts(prev => {
+      const next = {...prev};
+      staffList.forEach(emp => { next[emp.id] = candidate.shifts[emp.id] || {}; });
+      return next;
+    });
+    showMsg("✓ 候補を採用しました");
   }
 
   function confirmAndNextMonth() {
@@ -1474,7 +1649,7 @@ ${pageHtmls}
     ["employee",    "従業員管理", "#7c3aed","#f5f3ff"],
   ];
 
-  const activeTabColor  = TABS.find(([key]) => key===tab)?.[2] || C.accent;
+  const activeTabColor  = tab === "alert" ? "#dc2626" : "#3b82f6";
   const headerLabel     = view==="month"
     ? `${year}年 ${month+1}月`
     : `${weekDates[0].getMonth()+1}/${weekDates[0].getDate()} 〜 ${weekDates[6].getMonth()+1}/${weekDates[6].getDate()}`;
@@ -1507,8 +1682,9 @@ ${pageHtmls}
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
             <h1 style={{margin:0,fontSize:16,fontWeight:900,color:"#fff"}}>勤務表</h1>
             <div style={{display:"flex",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
-              <button onClick={runAutoGenerate}      style={{...S.btn(C.green),    fontSize:12,padding:"6px 12px"}}>⚡ 自動生成</button>
-              <button onClick={confirmAndNextMonth}  style={{...S.btn("#7c3aed"), fontSize:12,padding:"6px 12px"}}>✅ 確定して翌月へ</button>
+              <button onClick={runAutoGenerate}           style={{...S.btn(C.green),    fontSize:12,padding:"6px 12px"}}>⚡ 自動生成</button>
+              <button onClick={() => runCandidateGeneration(5)} style={{...S.btn("#0891b2"),  fontSize:12,padding:"6px 12px"}}>🎲 候補生成</button>
+              <button onClick={confirmAndNextMonth}       style={{...S.btn("#7c3aed"), fontSize:12,padding:"6px 12px"}}>✅ 確定して翌月へ</button>
               <button onClick={exportPDF}            style={{...S.btn("#e11d48"), fontSize:12,padding:"6px 12px"}}>🖨 プレビュー</button>
               <button onClick={exportCalendarPDF}    style={{...S.btn("#0891b2"), fontSize:12,padding:"6px 12px"}}>📅 カレンダー</button>
               <button onClick={exportData}           style={{...S.btn("#0891b2"), fontSize:12,padding:"6px 12px"}}>📤 保存</button>
@@ -1559,6 +1735,14 @@ ${pageHtmls}
           </div>
         </div>
       </div>
+      {showCandidates && (
+        <CandidatesModal
+          candidates={candidates}
+          onAdopt={adoptCandidate}
+          onClose={() => setShowCandidates(false)}
+          onRegenerate={n => runCandidateGeneration(n)}
+        />
+      )}
     </ShiftContext.Provider>
   );
 }
