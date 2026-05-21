@@ -28,8 +28,6 @@
 
     body {
       font-family: 'Noto Sans JP', sans-serif;
-      line-height: 1.5;
-      letter-spacing: 0.01em;
     }
 
     #loading {
@@ -47,7 +45,7 @@
       width: 40px;
       height: 40px;
       border: 3px solid #e2e8f0;
-      border-top-color: #4f7ab3;
+      border-top-color: #3b82f6;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -74,25 +72,25 @@ const { useState, useMemo, useEffect, useContext, createContext } = React;
 
 // ── 定数 ──────────────────────────────────────────────────
 const FIXED_TYPES = {
-  休み:   { label:"休み",   short:"休", hours:"—", color:"#b8c4ce", bg:"#f8f7f5",  text:"#8595a6", workHours:0, fixed:true },
-  希望休: { label:"希望休", short:"希", hours:"—", color:"#d97070", bg:"#fdf3f3", text:"#a51c1c", workHours:0, fixed:true },
+  休み:   { label:"休み",   short:"休", hours:"—", color:"#cbd5e1", bg:"#f8fafc", text:"#94a3b8", workHours:0, fixed:true },
+  希望休: { label:"希望休", short:"希", hours:"—", color:"#f87171", bg:"#fff5f5", text:"#b91c1c", workHours:0, fixed:true },
 };
 const INITIAL_SHIFTS = [
-  { key:"早番A", label:"早番A", short:"早A", startH:6,  endH:15, color:"#b07030", bg:"#fdf0e0", text:"#7a4220" },
-  { key:"遅番",  label:"遅番",  short:"遅",  startH:12, endH:21, color:"#4a7fc1", bg:"#edf4fd", text:"#1e3a8a" },
-  { key:"夜勤",  label:"夜勤",  short:"夜",  startH:17, endH:29, color:"#6d5ec7", bg:"#f3f0fd", text:"#3d1e80" },
-  { key:"早番B", label:"早番B", short:"早B", startH:7,  endH:16, color:"#2d8b6f", bg:"#edfaf3", text:"#0a4a35" },
-  { key:"早番C", label:"早番C", short:"早C", startH:8,  endH:17, color:"#c44b6a", bg:"#fef0f3", text:"#8a1f38" },
+  { key:"早番A", label:"早番A", short:"早A", startH:6,  endH:15, color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { key:"遅番",  label:"遅番",  short:"遅",  startH:12, endH:21, color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { key:"夜勤",  label:"夜勤",  short:"夜",  startH:17, endH:29, color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+  { key:"早番B", label:"早番B", short:"早B", startH:7,  endH:16, color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { key:"早番C", label:"早番C", short:"早C", startH:8,  endH:17, color:"#e11d48", bg:"#fff1f2", text:"#9f1239" },
 ];
 const PILL_COLORS = [
-  { color:"#b07030", bg:"#fdf0e0", text:"#7a4220" },
-  { color:"#4a7fc1", bg:"#edf4fd", text:"#1e3a8a" },
-  { color:"#2d8b6f", bg:"#edfaf3", text:"#0a4a35" },
-  { color:"#6d5ec7", bg:"#f3f0fd", text:"#3d1e80" },
-  { color:"#c44b6a", bg:"#fef0f3", text:"#8a1f38" },
-  { color:"#0882a0", bg:"#e8f8fd", text:"#0d4d5e" },
-  { color:"#5e8f10", bg:"#f4fae8", text:"#2d4e05" },
-  { color:"#a824bb", bg:"#fdf0ff", text:"#620d72" },
+  { color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+  { color:"#e11d48", bg:"#fff1f2", text:"#9f1239" },
+  { color:"#0891b2", bg:"#ecfeff", text:"#164e63" },
+  { color:"#65a30d", bg:"#f7fee7", text:"#3a5c02" },
+  { color:"#c026d3", bg:"#fdf4ff", text:"#701a75" },
 ];
 const DOW = ["日","月","火","水","木","金","土"];
 const COLORS = [
@@ -155,20 +153,20 @@ function getWeekDates(base) {
 
 // ── スタイル定数（App 外で定義、再生成なし） ──────────────
 const C = {
-  bg:"#f6f5f1", surface:"#fff", surface2:"#f0ede8",
-  border:"#dad6d0", border2:"#c2bbb2",
-  text:"#1e293b", textSub:"#675f57", textMute:"#9c9489",
-  accent:"#4f7ab3", accentBg:"#edf4fb",
-  green:"#2d8b6f", greenBg:"#edfaf3",
-  amber:"#c47a2a", amberBg:"#fef4e2",
-  red:"#c44b6a",   redBg:"#fef0f3",
+  bg:"#f7f8fc", surface:"#fff", surface2:"#f1f5f9",
+  border:"#e2e8f0", border2:"#cbd5e1",
+  text:"#1e293b", textSub:"#64748b", textMute:"#94a3b8",
+  accent:"#3b82f6", accentBg:"#eff6ff",
+  green:"#059669", greenBg:"#f0fdf4",
+  amber:"#d97706", amberBg:"#fffbeb",
+  red:"#dc2626",   redBg:"#fff5f5",
 };
 const S = {
   th: w => ({ padding:"6px 3px", borderBottom:`2px solid ${C.border2}`, fontWeight:700, fontSize:10, textAlign:"center", minWidth:w, maxWidth:w, color:C.textMute, background:C.surface }),
   input: { padding:"8px 12px", borderRadius:8, border:`1px solid ${C.border}`, background:C.surface, color:C.text, fontSize:13, outline:"none", minWidth:120 },
   label: { display:"block", fontSize:11, color:C.textSub, marginBottom:4, fontWeight:600 },
-  btn: (bg, c="#fff") => ({ padding:"8px 18px", borderRadius:8, border:"none", background:bg, color:c, fontWeight:700, cursor:"pointer", fontSize:12, whiteSpace:"nowrap", fontFamily:"inherit" }),
-  card: { background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"20px 22px", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" },
+  btn: (bg, c="#fff") => ({ padding:"7px 16px", borderRadius:8, border:"none", background:bg, color:c, fontWeight:700, cursor:"pointer", fontSize:12, whiteSpace:"nowrap", fontFamily:"inherit" }),
+  card: { background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 18px", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" },
 };
 
 // ── 自動生成エンジン ───────────────────────────────────────
@@ -1642,16 +1640,16 @@ ${pageHtmls}
 
   // ── タブ定義 ──────────────────────────────────────────────
   const TABS = [
-    ["shift",       "勤務表",     "#4f7ab3","#edf4fb"],
-    ["personal",    "個人ビュー", "#4f7ab3","#edf4fb"],
-    ["wish",        "希望休",     "#4f7ab3","#edf4fb"],
-    ["alert",       "⚠ アラート", "#c44b6a","#fef0f3"],
-    ["constraints", "個人制約",   "#c47a2a","#fef4e2"],
-    ["required",    "必要人数",   "#c47a2a","#fef4e2"],
-    ["employee",    "従業員管理", "#6d5ec7","#f3f0fd"],
+    ["shift",       "勤務表",     "#3b82f6","#eff6ff"],
+    ["personal",    "個人ビュー", "#3b82f6","#eff6ff"],
+    ["wish",        "希望休",     "#3b82f6","#eff6ff"],
+    ["alert",       "⚠ アラート", "#dc2626","#fff5f5"],
+    ["constraints", "個人制約",   "#d97706","#fffbeb"],
+    ["required",    "必要人数",   "#d97706","#fffbeb"],
+    ["employee",    "従業員管理", "#7c3aed","#f5f3ff"],
   ];
 
-  const activeTabColor  = "#3d4f65";
+  const activeTabColor  = tab === "alert" ? "#dc2626" : "#3b82f6";
   const headerLabel     = view==="month"
     ? `${year}年 ${month+1}月`
     : `${weekDates[0].getMonth()+1}/${weekDates[0].getDate()} 〜 ${weekDates[6].getMonth()+1}/${weekDates[6].getDate()}`;
@@ -1680,17 +1678,17 @@ ${pageHtmls}
   return (
     <ShiftContext.Provider value={contextValue}>
       <div style={{fontFamily:"'Noto Sans JP',sans-serif",background:C.bg,minHeight:"100vh",color:C.text}} onClick={() => editCell && setEditCell(null)}>
-        <div style={{background:activeTabColor,padding:"12px 18px 0",boxShadow:"0 2px 8px rgba(0,0,0,0.12)"}}>
+        <div style={{background:activeTabColor,padding:"10px 14px 0",boxShadow:"0 1px 6px rgba(0,0,0,0.1)"}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
             <h1 style={{margin:0,fontSize:16,fontWeight:900,color:"#fff"}}>勤務表</h1>
             <div style={{display:"flex",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
-              <button onClick={runAutoGenerate}           style={{...S.btn("rgba(255,255,255,0.15)"),fontSize:12,padding:"7px 14px"}}>⚡ 自動生成</button>
-              <button onClick={() => runCandidateGeneration(5)} style={{...S.btn("rgba(255,255,255,0.15)"),fontSize:12,padding:"7px 14px"}}>🎲 候補生成</button>
-              <button onClick={confirmAndNextMonth}       style={{...S.btn("#c47a2a"),fontSize:12,padding:"7px 14px"}}>✅ 確定して翌月へ</button>
-              <button onClick={exportPDF}            style={{...S.btn("rgba(255,255,255,0.15)"),fontSize:12,padding:"7px 14px"}}>🖨 プレビュー</button>
-              <button onClick={exportCalendarPDF}    style={{...S.btn("rgba(255,255,255,0.15)"),fontSize:12,padding:"7px 14px"}}>📅 カレンダー</button>
-              <button onClick={exportData}           style={{...S.btn("rgba(255,255,255,0.15)"),fontSize:12,padding:"7px 14px"}}>📤 保存</button>
-              <button onClick={importData}           style={{...S.btn("rgba(255,255,255,0.08)","rgba(255,255,255,0.75)"),border:"1px solid rgba(255,255,255,0.25)",fontSize:12,padding:"7px 14px"}}>📥 読込</button>
+              <button onClick={runAutoGenerate}           style={{...S.btn(C.green),    fontSize:12,padding:"6px 12px"}}>⚡ 自動生成</button>
+              <button onClick={() => runCandidateGeneration(5)} style={{...S.btn("#0891b2"),  fontSize:12,padding:"6px 12px"}}>🎲 候補生成</button>
+              <button onClick={confirmAndNextMonth}       style={{...S.btn("#7c3aed"), fontSize:12,padding:"6px 12px"}}>✅ 確定して翌月へ</button>
+              <button onClick={exportPDF}            style={{...S.btn("#e11d48"), fontSize:12,padding:"6px 12px"}}>🖨 プレビュー</button>
+              <button onClick={exportCalendarPDF}    style={{...S.btn("#0891b2"), fontSize:12,padding:"6px 12px"}}>📅 カレンダー</button>
+              <button onClick={exportData}           style={{...S.btn("#0891b2"), fontSize:12,padding:"6px 12px"}}>📤 保存</button>
+              <button onClick={importData}           style={{...S.btn(C.surface,C.textSub),border:`1px solid ${C.border}`,fontSize:12,padding:"6px 12px"}}>📥 読込</button>
             </div>
           </div>
           {msg && <div style={{marginBottom:8}}><span style={{fontSize:11,color:"#fff",fontWeight:700,background:"rgba(255,255,255,0.2)",borderRadius:6,padding:"3px 10px"}}>{msg}</span></div>}
@@ -1700,7 +1698,7 @@ ${pageHtmls}
               const alertCount = key==="alert" ? totalAlerts : 0;
               return (
                 <button key={key} onClick={() => setTab(key)}
-                  style={{padding:"10px 18px",border:"none",background:isActive?"#fff":"rgba(255,255,255,0.18)",color:isActive?activeColor:"rgba(255,255,255,0.88)",fontWeight:isActive?700:500,cursor:"pointer",fontSize:12,borderRadius:"12px 12px 0 0",whiteSpace:"nowrap",fontFamily:"inherit",position:"relative",transition:"all 0.15s",boxShadow:isActive?"0 -2px 8px rgba(0,0,0,0.1)":"none",marginBottom:isActive?"-1px":"0",zIndex:isActive?2:1}}>
+                  style={{padding:"9px 16px",border:"none",background:isActive?"#fff":"rgba(255,255,255,0.25)",color:isActive?activeColor:"#fff",fontWeight:isActive?700:500,cursor:"pointer",fontSize:12,borderRadius:"10px 10px 0 0",whiteSpace:"nowrap",fontFamily:"inherit",position:"relative",transition:"all 0.15s",boxShadow:isActive?"0 -2px 8px rgba(0,0,0,0.1)":"none",marginBottom:isActive?"-1px":"0",zIndex:isActive?2:1}}>
                   {label}
                   {alertCount>0 && <span style={{marginLeft:4,background:isActive?activeColor:"#fff",color:isActive?"#fff":activeColor,borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:700}}>{alertCount}</span>}
                 </button>
@@ -1708,7 +1706,7 @@ ${pageHtmls}
             })}
           </div>
         </div>
-        <div style={{background:C.surface,margin:"16px",borderRadius:14,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",padding:24}}>
+        <div style={{background:C.surface,margin:"16px",borderRadius:14,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",padding:20}}>
           {tab==="shift" && (
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
               <div style={{display:"flex",alignItems:"center",gap:6,background:C.surface2,borderRadius:9,padding:"4px 8px",border:`1px solid ${C.border}`}}>
