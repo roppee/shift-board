@@ -1,0 +1,2842 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="slate" data-density="default" data-badge="soft">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="Shift"/>
+  <title>勤務表</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+/* =====================================================
+   Design System — Shift Manager
+   ===================================================== */
+:root {
+  --bg:           #F6F5F1;
+  --surface:     #FFFFFF;
+  --surface-2:   #FAFAF7;
+  --line:        #E7E5DE;
+  --line-strong: #D4D2CA;
+  --ink:         #1B1D1F;
+  --ink-2:       #4A4D52;
+  --ink-3:       #8A8E94;
+  --ink-4:       #B8BCC0;
+  --accent:      #2E5BFF;
+  --accent-ink:  #FFFFFF;
+  --accent-soft: #E8EEFF;
+  --danger:      #D44A3F;
+  --success:     #1E8A5F;
+
+  --c-amber-bg:   #FFF4D6;  --c-amber-ink:   #8A5A00;  --c-amber-line:   #F0CF7A;
+  --c-emerald-bg: #DDF5E5;  --c-emerald-ink: #0F6B3E;  --c-emerald-line: #93D9AE;
+  --c-rose-bg:    #FCE0E2;  --c-rose-ink:    #9B1F2A;  --c-rose-line:    #ECABB1;
+  --c-sky-bg:     #DDEAFB;  --c-sky-ink:     #1B4F8A;  --c-sky-line:     #9CC0EE;
+  --c-violet-bg:  #E8E0FA;  --c-violet-ink:  #4F2B96;  --c-violet-line:  #B9A6E5;
+  --c-slate-bg:   #ECECE8;  --c-slate-ink:   #5C5F65;  --c-slate-line:   #D4D2CA;
+
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(20,20,30,.04);
+  --shadow:    0 4px 12px rgba(20,20,30,.06), 0 1px 2px rgba(20,20,30,.04);
+  --shadow-lg: 0 12px 32px rgba(20,20,30,.10), 0 2px 6px rgba(20,20,30,.06);
+
+  --row-h:        44px;
+  --cell-w:       46px;
+  --badge-h:      30px;
+  --badge-fs:     13px;
+  --name-w:       180px;
+  --constraint-w: 56px;
+  --summary-w:    64px;
+}
+html[data-density="compact"] {
+  --row-h:    34px;  --cell-w:   38px;
+  --badge-h:  24px;  --badge-fs: 12px;  --name-w: 160px;
+}
+html[data-density="comfortable"] {
+  --row-h:    52px;  --cell-w:   54px;
+  --badge-h:  34px;  --badge-fs: 14px;  --name-w: 200px;
+}
+
+html[data-theme="cream"] {
+  --bg: #F6F2EA; --surface: #FFFFFF; --surface-2: #FBF8F1;
+  --line: #E8E0CE; --line-strong: #D6CBB1;
+  --accent: #B85C2E; --accent-soft: #F6E3D2;
+}
+html[data-theme="slate"] {
+  --bg: #F0F2F5; --surface: #FFFFFF; --surface-2: #F7F8FA;
+  --line: #E2E5EA; --line-strong: #C9CED6;
+  --accent: #2E5BFF; --accent-soft: #E1E8FF;
+}
+html[data-theme="mono"] {
+  --bg: #F4F4F2; --surface: #FFFFFF; --surface-2: #FAFAF8;
+  --line: #E5E5E2; --line-strong: #C8C8C4;
+  --accent: #1B1D1F; --accent-ink: #FFFFFF; --accent-soft: #E8E8E5;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Noto Sans JP', system-ui, sans-serif;
+  font-feature-settings: "palt";
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button { font-family: inherit; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: 'Manrope', system-ui, sans-serif; font-feature-settings: 'tnum'; }
+
+/* ── App shell ── */
+.app { max-width: 1680px; margin: 0 auto; padding: 20px 28px 80px; }
+
+/* ── Header ── */
+.topbar { display:flex; align-items:center; gap:20px; padding:4px 0 18px; }
+.brand { display:flex; align-items:center; gap:12px; }
+.brand-mark {
+  width:36px; height:36px; background:var(--ink); color:#fff;
+  border-radius:9px; display:grid; place-items:center;
+  font-weight:700; font-size:16px; letter-spacing:-0.02em;
+}
+.brand-title { font-size:17px; font-weight:600; letter-spacing:-0.01em; }
+.brand-sub   { font-size:12px; color:var(--ink-3); margin-top:-2px; }
+.topbar-actions { margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+/* ── Buttons ── */
+.btn {
+  appearance:none; border:1px solid transparent; background:transparent; color:var(--ink);
+  height:40px; padding:0 16px; border-radius:10px; font-size:14px; font-weight:500;
+  display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+  transition:background .15s, border-color .15s, transform .05s; white-space:nowrap;
+}
+.btn:hover { background:var(--surface-2); }
+.btn:active { transform:translateY(1px); }
+.btn-ghost { color:var(--ink-2); }
+.btn-ghost:hover { background:var(--surface); color:var(--ink); }
+.btn-outline { border-color:var(--line-strong); background:var(--surface); }
+.btn-outline:hover { border-color:var(--ink-3); }
+.btn-primary {
+  background:var(--accent); color:var(--accent-ink); font-weight:600;
+  height:44px; padding:0 22px; border-radius:11px;
+  box-shadow:0 1px 2px rgba(20,20,30,.08), inset 0 -1px 0 rgba(0,0,0,.10);
+}
+.btn-primary:hover { background:color-mix(in oklab, var(--accent), black 10%); }
+.btn-icon {
+  width:40px; height:40px; padding:0; border-radius:10px;
+  display:grid; place-items:center; color:var(--ink-2); border:1px solid transparent;
+}
+.btn-icon:hover { background:var(--surface); color:var(--ink); border-color:var(--line); }
+.btn-mini {
+  appearance:none; background:var(--surface); border:1px solid var(--line);
+  border-radius:8px; height:32px; padding:0 12px; font-size:12.5px;
+  font-weight:500; color:var(--ink-2); cursor:pointer; white-space:nowrap;
+}
+.btn-mini:hover { border-color:var(--line-strong); color:var(--ink); }
+.btn-mini.danger { color:var(--danger); }
+.btn-mini.danger:hover { border-color:var(--danger); }
+.divider-v { width:1px; height:28px; background:var(--line); }
+
+/* ── Tabs ── */
+.tabs {
+  display:flex; gap:2px; padding:4px;
+  background:var(--surface-2); border:1px solid var(--line);
+  border-radius:12px; width:max-content; flex-wrap:wrap;
+}
+.tab {
+  appearance:none; border:none; background:transparent; color:var(--ink-2);
+  height:36px; padding:0 16px; border-radius:9px; font-size:13.5px; font-weight:500;
+  cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+  transition:background .15s, color .15s;
+}
+.tab:hover { color:var(--ink); }
+.tab[aria-selected="true"] {
+  background:var(--surface); color:var(--ink); font-weight:600;
+  box-shadow:var(--shadow-sm);
+}
+.tab .badge-count {
+  background:var(--c-rose-bg); color:var(--c-rose-ink);
+  font-size:11px; font-weight:600; padding:1px 6px;
+  border-radius:99px; min-width:18px; text-align:center;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display:flex; align-items:center; gap:12px;
+  margin:18px 0 14px; flex-wrap:wrap;
+}
+.month-nav {
+  display:flex; align-items:center; background:var(--surface);
+  border:1px solid var(--line); border-radius:11px; height:44px; overflow:hidden;
+}
+.month-nav button {
+  width:44px; height:100%; background:transparent; border:none;
+  color:var(--ink-2); cursor:pointer; display:grid; place-items:center;
+}
+.month-nav button:hover { background:var(--surface-2); color:var(--ink); }
+.month-nav .label {
+  padding:0 18px; font-weight:600; font-size:15px; letter-spacing:-0.01em;
+  border-left:1px solid var(--line); border-right:1px solid var(--line);
+  height:100%; display:inline-flex; align-items:center; justify-content:center;
+  min-width:160px; white-space:nowrap;
+}
+.seg {
+  display:inline-flex; background:var(--surface-2); border:1px solid var(--line);
+  border-radius:11px; padding:3px; height:44px; position:relative;
+}
+.seg button {
+  appearance:none; border:none; background:transparent; color:var(--ink-2);
+  height:100%; padding:0 14px; border-radius:8px; font-size:13.5px;
+  font-weight:500; cursor:pointer; position:relative; z-index:1;
+  transition:color .15s;
+}
+.seg button[aria-pressed="true"] {
+  color:var(--ink); font-weight:600;
+  background:var(--surface); box-shadow:var(--shadow-sm);
+}
+.seg-thumb {
+  position:absolute; top:3px; bottom:3px;
+  background:var(--surface); border-radius:8px;
+  box-shadow:var(--shadow-sm);
+  transition:left .25s cubic-bezier(.4,.2,.2,1), width .25s cubic-bezier(.4,.2,.2,1);
+  pointer-events:none;
+}
+.search {
+  display:flex; align-items:center; gap:8px; background:var(--surface);
+  border:1px solid var(--line); border-radius:11px; height:44px;
+  padding:0 14px; width:220px;
+}
+.search input { border:none; outline:none; flex:1; font:inherit; background:transparent; color:var(--ink); }
+.search input::placeholder { color:var(--ink-3); }
+.toolbar-spacer { flex:1; }
+.filter-chip {
+  height:36px; padding:0 12px; background:var(--surface); border:1px solid var(--line);
+  border-radius:99px; color:var(--ink-2); font-size:13px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.filter-chip:hover { border-color:var(--line-strong); color:var(--ink); }
+.filter-chip[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+
+/* ── Card ── */
+.card {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);
+}
+
+/* ── Shift Table ── */
+.shift-table-wrap { overflow:auto; max-width:100%; }
+.shift-table {
+  border-collapse:separate; border-spacing:0;
+  width:max-content; min-width:100%; font-size:var(--badge-fs);
+}
+.shift-table thead th {
+  position:sticky; top:0; background:var(--surface); z-index:3;
+  font-weight:500; color:var(--ink-3); font-size:11px;
+  letter-spacing:0.04em; text-transform:uppercase;
+  padding:12px 8px 10px; border-bottom:1px solid var(--line);
+  text-align:left; white-space:nowrap;
+}
+.shift-table thead th.day {
+  text-align:center; width:var(--cell-w); min-width:var(--cell-w);
+  padding:10px 0 8px; text-transform:none; letter-spacing:normal;
+}
+.day-h {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  line-height:1.1; cursor:pointer; padding:4px 0; border-radius:6px;
+  transition:background .15s;
+}
+.day-h:hover { background:var(--surface-2); }
+.day-h .num-d {
+  font-family:'Manrope', system-ui, sans-serif;
+  font-size:14px; font-weight:600; color:var(--ink); letter-spacing:-0.01em;
+}
+.day-h .dow { font-size:10.5px; color:var(--ink-3); font-weight:500; }
+.day-h.sat .dow, .day-h.sat .num-d { color:#2563EB; }
+.day-h.sun .dow, .day-h.sun .num-d,
+.day-h.hol .dow, .day-h.hol .num-d { color:#DC2626; }
+.day-h.today { background:var(--accent-soft); }
+.day-h.today .num-d { color:var(--accent); }
+
+.shift-table thead th.name-col,
+.shift-table thead th.constraint-col,
+.shift-table thead th.summary-col {
+  position:sticky; z-index:4; background:var(--surface);
+  height:var(--row-h); padding-top:0; padding-bottom:0; vertical-align:middle;
+}
+.shift-table thead th.name-col       { left:0; width:var(--name-w); min-width:var(--name-w); }
+.shift-table thead th.constraint-col { left:var(--name-w); width:var(--constraint-w); min-width:var(--constraint-w); text-align:center; line-height:0; }
+.shift-table thead th.summary-col    { right:0; width:var(--summary-w); min-width:var(--summary-w); text-align:right; padding-right:20px; }
+
+.shift-table tbody td {
+  border-bottom:1px solid var(--line); height:var(--row-h);
+  padding:0; text-align:center; background:var(--surface);
+}
+.shift-table tbody tr:last-child td { border-bottom:none; }
+.shift-table tbody td.sat  { background:#F4F8FF; }
+.shift-table tbody td.sun  { background:#FDF5F5; }
+.shift-table tbody td.today { background:color-mix(in oklab, var(--accent-soft), white 60%); }
+.shift-table tbody td.locked { background:color-mix(in oklab, var(--c-amber-bg), white 60%); }
+
+.name-cell, .constraint-cell, .summary-cell {
+  position:sticky; background:var(--surface); z-index:2;
+}
+.name-cell       { left:0; width:var(--name-w); min-width:var(--name-w); padding:0 10px 0 14px; text-align:left; }
+.constraint-cell { left:var(--name-w); width:var(--constraint-w); min-width:var(--constraint-w); text-align:center; }
+.summary-cell    { right:0; width:var(--summary-w); min-width:var(--summary-w); text-align:right; padding-right:16px; }
+.shift-table tbody tr:hover .name-cell,
+.shift-table tbody tr:hover .constraint-cell,
+.shift-table tbody tr:hover .summary-cell { background:var(--surface-2); }
+.shift-table tbody tr:hover td { background:color-mix(in oklab, var(--surface-2), transparent 30%); }
+.shift-table tbody td.sat:not(.locked)   { background:#F4F8FF; }
+.shift-table tbody td.sun:not(.locked)   { background:#FDF5F5; }
+.shift-table tbody tr:hover td.sat:not(.locked)  { background:#EBF3FF; }
+.shift-table tbody tr:hover td.sun:not(.locked)  { background:#FBF0F0; }
+
+.name-row { display:flex; align-items:center; gap:10px; height:100%; }
+.name-dot { width:8px; height:8px; border-radius:99px; flex-shrink:0; }
+.name-text { display:flex; flex-direction:column; line-height:1.2; min-width:0; flex:1; }
+.name-text .nm { font-weight:600; font-size:13.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.name-text .rl { font-size:11px; color:var(--ink-3); }
+
+.lock-btn {
+  appearance:none; border:1px solid var(--line); background:transparent;
+  border-radius:7px; width:32px; height:26px; display:grid; place-items:center;
+  cursor:pointer; color:var(--ink-4); flex-shrink:0; font-size:12px;
+  transition:all .15s;
+}
+.lock-btn:hover { border-color:var(--c-amber-line); color:var(--c-amber-ink); background:var(--c-amber-bg); }
+.lock-btn.all { background:var(--c-amber-bg); border-color:var(--c-amber-line); color:var(--c-amber-ink); }
+.lock-btn.some { background:color-mix(in oklab, var(--c-amber-bg), white 50%); border-color:var(--c-amber-line); color:var(--c-amber-ink); }
+
+.shift-cell-inner {
+  display:grid; place-items:center; height:100%;
+  cursor:pointer; user-select:none; position:relative;
+}
+.summary-cell .sn { font-family:'Manrope',sans-serif; font-weight:600; font-size:13.5px; color:var(--success); }
+.summary-cell .sl { color:var(--ink-3); font-size:10.5px; margin-left:1px; }
+
+/* ── Shift Badge ── */
+.badge {
+  display:inline-flex; align-items:center; justify-content:center; gap:4px;
+  height:var(--badge-h); min-width:calc(var(--cell-w) - 10px);
+  padding:0 8px; border-radius:7px; font-weight:600; font-size:var(--badge-fs);
+  border:1px solid; letter-spacing:0.01em;
+  transition:transform .1s, box-shadow .15s;
+}
+.badge:hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(20,20,30,.08); }
+.badge .ico { width:12px; height:12px; opacity:.9; flex-shrink:0; }
+.badge.amber   { background:var(--c-amber-bg);   color:var(--c-amber-ink);   border-color:var(--c-amber-line); }
+.badge.emerald { background:var(--c-emerald-bg); color:var(--c-emerald-ink); border-color:var(--c-emerald-line); }
+.badge.rose    { background:var(--c-rose-bg);    color:var(--c-rose-ink);    border-color:var(--c-rose-line); }
+.badge.sky     { background:var(--c-sky-bg);     color:var(--c-sky-ink);     border-color:var(--c-sky-line); }
+.badge.violet  { background:var(--c-violet-bg);  color:var(--c-violet-ink);  border-color:var(--c-violet-line); }
+.badge.slate   { background:transparent; color:var(--ink-4); border-color:transparent; font-weight:500; }
+
+html[data-badge="bar"] .badge {
+  border:none; border-left:3px solid; border-radius:4px;
+  background:transparent; padding-left:6px; justify-content:flex-start;
+  min-width:calc(var(--cell-w) - 8px);
+}
+html[data-badge="bar"] .badge.amber   { border-left-color:#D49A2A; color:var(--c-amber-ink); }
+html[data-badge="bar"] .badge.emerald { border-left-color:#2BA365; color:var(--c-emerald-ink); }
+html[data-badge="bar"] .badge.rose    { border-left-color:#D5616A; color:var(--c-rose-ink); }
+html[data-badge="bar"] .badge.sky     { border-left-color:#3F7CCB; color:var(--c-sky-ink); }
+html[data-badge="bar"] .badge.violet  { border-left-color:#7A5BC8; color:var(--c-violet-ink); }
+html[data-badge="solid"] .badge.amber   { background:#F0B43F; color:#fff; border-color:transparent; }
+html[data-badge="solid"] .badge.emerald { background:#2DA56A; color:#fff; border-color:transparent; }
+html[data-badge="solid"] .badge.rose    { background:#D2566A; color:#fff; border-color:transparent; }
+html[data-badge="solid"] .badge.sky     { background:#4A82D1; color:#fff; border-color:transparent; }
+html[data-badge="solid"] .badge.violet  { background:#8264C9; color:#fff; border-color:transparent; }
+
+/* ── Popover ── */
+.popover {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; box-shadow:var(--shadow-lg); padding:14px;
+  z-index:500; min-width:260px;
+  animation:pop .12s ease-out;
+}
+@keyframes pop {
+  from { opacity:0; transform:translateY(-4px) scale(.98); }
+  to   { opacity:1; transform:none; }
+}
+.pop-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin-bottom:10px;
+}
+.pop-head .who  { font-weight:600; font-size:13.5px; }
+.pop-head .when { font-size:12px; color:var(--ink-3); }
+.pop-head .cls  {
+  appearance:none; border:none; background:transparent; color:var(--ink-3);
+  cursor:pointer; font-size:18px; line-height:1; padding:0 2px;
+}
+.pop-head .cls:hover { color:var(--ink); }
+.pop-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+}
+.pop-opt {
+  appearance:none; border:1px solid var(--line); background:var(--surface);
+  border-radius:9px; padding:10px 4px; cursor:pointer;
+  text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;
+  transition:border-color .15s, background .15s;
+}
+.pop-opt:hover { border-color:var(--line-strong); background:var(--surface-2); }
+.pop-opt.selected { border-color:var(--accent); background:var(--accent-soft); }
+.pop-opt .pop-label { font-size:11.5px; color:var(--ink); font-weight:600; }
+.pop-opt .pop-time  { font-size:10px; color:var(--ink-3); font-family:'Manrope',sans-serif; }
+.pop-badge-swatch {
+  display:inline-grid; place-items:center;
+  width:32px; height:26px; border-radius:6px;
+  font-size:12px; font-weight:700;
+}
+
+/* ── Foot summary ── */
+.foot-summary {
+  display:flex; align-items:center; gap:18px; margin-top:16px;
+  padding:14px 20px; background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; flex-wrap:wrap;
+}
+.foot-summary .stat { display:flex; align-items:baseline; gap:6px; }
+.foot-summary .stat .sn { font-size:18px; font-weight:700; color:var(--ink); letter-spacing:-0.01em; font-family:'Manrope',sans-serif; }
+.foot-summary .stat .sl { font-size:12px; color:var(--ink-3); }
+.foot-summary .fdiv { width:1px; height:22px; background:var(--line); }
+.foot-summary .legend { display:flex; gap:10px; align-items:center; margin-left:auto; flex-wrap:wrap; }
+.foot-summary .legend-item { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-2); }
+
+/* ── Personal View ── */
+.pv-staff-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.pv-chip {
+  appearance:none; background:var(--surface); border:1px solid var(--line);
+  border-radius:99px; padding:0 16px; height:40px;
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:13.5px; font-weight:500; color:var(--ink-2);
+  cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+}
+.pv-chip:hover { border-color:var(--line-strong); color:var(--ink); }
+.pv-chip[aria-pressed="true"] {
+  border-color:var(--accent); color:var(--ink);
+  background:color-mix(in oklab, var(--accent-soft), white 50%);
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--accent-soft), white 40%);
+}
+.pv-chip .dot { width:8px; height:8px; border-radius:99px; }
+.pv-summary {
+  display:flex; align-items:center; gap:24px; padding:22px 24px;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:16px; margin-bottom:22px; flex-wrap:wrap;
+}
+.pv-avatar {
+  width:56px; height:56px; border-radius:99px;
+  display:grid; place-items:center; color:#fff;
+  font-weight:700; font-size:18px; flex-shrink:0;
+}
+.pv-identity { display:flex; flex-direction:column; line-height:1.2; }
+.pv-identity .nm { font-size:19px; font-weight:600; letter-spacing:-0.01em; }
+.pv-identity .rl { font-size:12.5px; color:var(--ink-3); margin-top:4px; }
+.pv-stats { display:flex; gap:10px; margin-left:auto; flex-wrap:wrap; }
+.pv-stat {
+  min-width:90px; padding:12px 16px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--line);
+}
+.pv-stat.green { background:color-mix(in oklab, var(--c-emerald-bg), white 50%); border-color:var(--c-emerald-line); }
+.pv-stat.amber { background:color-mix(in oklab, var(--c-amber-bg), white 50%); border-color:var(--c-amber-line); }
+.pv-stat.rose  { background:color-mix(in oklab, var(--c-rose-bg), white 50%); border-color:var(--c-rose-line); }
+.pv-stat .v { font-family:'Manrope',sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.02em; color:var(--ink); }
+.pv-stat.green .v { color:var(--c-emerald-ink); }
+.pv-stat.amber .v { color:var(--c-amber-ink); }
+.pv-stat.rose  .v { color:var(--c-rose-ink); }
+.pv-stat .v .u { font-size:13px; font-weight:600; margin-left:1px; }
+.pv-stat .l { font-size:11px; color:var(--ink-3); margin-top:2px; }
+.pv-title { display:flex; align-items:baseline; gap:12px; margin:8px 0 14px; flex-wrap:wrap; }
+.pv-title h2 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.01em; }
+.pv-title .ym { font-family:'Manrope',sans-serif; color:var(--ink-2); font-weight:500; }
+.pv-calendar {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);
+}
+.pv-cal-head, .pv-cal-row { display:grid; grid-template-columns:repeat(7,1fr); }
+.pv-cal-head { background:var(--surface-2); border-bottom:1px solid var(--line); }
+.pv-cal-head > div { padding:10px 0; text-align:center; font-size:12px; font-weight:600; color:var(--ink-2); }
+.pv-cal-head > div.sat { color:#2563EB; }
+.pv-cal-head > div.sun { color:#DC2626; }
+.pv-cal-row > div {
+  border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+  min-height:88px; padding:8px 10px;
+  display:flex; flex-direction:column; gap:6px;
+  background:var(--surface); position:relative; cursor:pointer;
+}
+.pv-cal-row > div:hover { background:var(--surface-2); }
+.pv-cal-row > div:last-child { border-right:none; }
+.pv-cal-row:last-child > div { border-bottom:none; }
+.pv-cal-row > div.empty { background:var(--surface-2); cursor:default; }
+.pv-cal-row > div.empty:hover { background:var(--surface-2); }
+.pv-cal-row > div.sun { background:#FDF5F5; }
+.pv-cal-row > div.sat { background:#F4F8FF; }
+.pv-cal-row > div.today { box-shadow:inset 0 0 0 2px var(--accent); }
+.pv-day-n { font-family:'Manrope',sans-serif; font-size:14px; font-weight:600; color:var(--ink); }
+.pv-cal-row > div.sun .pv-day-n { color:#DC2626; }
+.pv-cal-row > div.sat .pv-day-n { color:#2563EB; }
+.pv-req-tag {
+  position:absolute; top:6px; right:8px;
+  font-size:10px; font-weight:600; color:var(--c-rose-ink);
+  background:var(--c-rose-bg); border:1px solid var(--c-rose-line);
+  border-radius:99px; padding:1px 6px;
+}
+
+/* ── Request (Hope-off) Table ── */
+.req-card { padding:18px 20px 8px; }
+.req-table-wrap { overflow:auto; padding-bottom:8px; }
+.req-table {
+  border-collapse:separate; border-spacing:0;
+  width:max-content; min-width:100%; font-size:13px;
+}
+.req-table thead th {
+  position:sticky; top:0; background:var(--surface);
+  font-weight:500; color:var(--ink-3); font-size:11px;
+  padding:12px 8px 10px; border-bottom:1px solid var(--line);
+  text-align:center; text-transform:uppercase; letter-spacing:0.04em; z-index:2;
+}
+.req-table thead th.name-col { position:sticky; left:0; z-index:3; background:var(--surface); text-align:left; text-transform:none; letter-spacing:normal; min-width:180px; padding-left:16px; }
+.req-table thead th.count-col { position:sticky; right:0; z-index:3; background:var(--surface); text-align:right; text-transform:none; letter-spacing:normal; padding-right:18px; }
+.req-table thead th.day { width:40px; min-width:40px; padding:8px 0; }
+.req-table tbody td {
+  border-bottom:1px solid var(--line); padding:0;
+  height:48px; background:var(--surface); text-align:center;
+}
+.req-table tbody tr:last-child td { border-bottom:none; }
+.req-table tbody tr:hover td { background:var(--surface-2); }
+.req-table tbody tr:hover .req-name-cell,
+.req-table tbody tr:hover .req-count-cell { background:var(--surface-2); }
+.req-table .req-name-cell { position:sticky; left:0; z-index:1; background:var(--surface); min-width:180px; padding:0 14px 0 16px; text-align:left; }
+.req-table .req-count-cell { position:sticky; right:0; z-index:1; background:var(--surface); min-width:80px; padding-right:18px; text-align:right; }
+.req-table tbody td.sat { background:#F4F8FF; }
+.req-table tbody td.sun { background:#FDF5F5; }
+.req-toggle {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:9px;
+  border:1.5px dashed var(--line-strong); background:transparent;
+  cursor:pointer; transition:all .15s; color:var(--ink-4);
+}
+.req-toggle:hover { border-color:var(--c-rose-line); background:color-mix(in oklab,var(--c-rose-bg),white 50%); color:var(--c-rose-ink); }
+.req-toggle.on {
+  background:var(--c-rose-bg); border:1px solid var(--c-rose-line);
+  color:var(--c-rose-ink); font-weight:700; font-size:13px;
+}
+.req-count { display:inline-flex; align-items:baseline; gap:2px; font-family:'Manrope',sans-serif; font-weight:600; color:var(--ink-2); }
+.req-count.zero { color:var(--ink-4); }
+.req-count .u { font-size:11px; font-weight:500; color:var(--ink-3); }
+
+/* ── Form primitives ── */
+.field { display:flex; flex-direction:column; gap:6px; }
+.field .lbl { font-size:12px; color:var(--ink-3); font-weight:500; }
+.inp, .sel, .txa {
+  appearance:none; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:0 14px; height:44px; font:inherit; color:var(--ink);
+  outline:none; transition:border-color .15s, box-shadow .15s;
+}
+.txa { min-height:88px; padding:12px 14px; resize:vertical; height:auto; }
+.inp:hover,.sel:hover,.txa:hover { border-color:var(--line-strong); }
+.inp:focus,.sel:focus,.txa:focus {
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--accent-soft), white 30%);
+}
+.inp.num-inp { font-family:'Manrope',sans-serif; font-weight:600; font-size:16px; }
+.sel {
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A8E94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat:no-repeat; background-position:right 14px center; padding-right:36px;
+}
+
+/* Stepper */
+.stepper {
+  display:inline-flex; align-items:center; gap:2px;
+  background:var(--surface-2); border:1px solid var(--line);
+  border-radius:11px; padding:3px;
+}
+.stepper button {
+  appearance:none; background:var(--surface); border:1px solid var(--line);
+  width:34px; height:34px; border-radius:8px; display:grid; place-items:center;
+  color:var(--ink-2); cursor:pointer;
+}
+.stepper button:hover { border-color:var(--ink-3); color:var(--ink); }
+.stepper button:disabled { opacity:.4; cursor:not-allowed; }
+.stepper .sv { font-family:'Manrope',sans-serif; font-size:17px; font-weight:700; min-width:36px; text-align:center; color:var(--ink); letter-spacing:-0.01em; }
+
+/* DoW pills */
+.dow-row { display:inline-flex; gap:6px; }
+.dow-pill {
+  appearance:none; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; width:44px; height:44px; font-size:14px; font-weight:600;
+  cursor:pointer; color:var(--ink-2); transition:all .15s;
+}
+.dow-pill:hover { border-color:var(--line-strong); color:var(--ink); }
+.dow-pill.sun { color:#DC2626; }
+.dow-pill.sat { color:#2563EB; }
+.dow-pill[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+.dow-pill[aria-pressed="true"].sun { background:#DC2626; border-color:#DC2626; }
+.dow-pill[aria-pressed="true"].sat { background:#2563EB; border-color:#2563EB; }
+
+/* Shift toggles */
+.shift-toggle-row { display:inline-flex; gap:8px; flex-wrap:wrap; }
+.shift-toggle {
+  appearance:none; height:40px; padding:0 14px; border-radius:11px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink-3);
+  font-size:13px; font-weight:600; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; transition:all .15s;
+}
+.shift-toggle:hover { border-color:var(--line-strong); color:var(--ink-2); }
+.shift-toggle[aria-pressed="true"].amber   { background:var(--c-amber-bg);   color:var(--c-amber-ink);   border-color:var(--c-amber-line); }
+.shift-toggle[aria-pressed="true"].emerald { background:var(--c-emerald-bg); color:var(--c-emerald-ink); border-color:var(--c-emerald-line); }
+.shift-toggle[aria-pressed="true"].rose    { background:var(--c-rose-bg);    color:var(--c-rose-ink);    border-color:var(--c-rose-line); }
+.shift-toggle[aria-pressed="true"].sky     { background:var(--c-sky-bg);     color:var(--c-sky-ink);     border-color:var(--c-sky-line); }
+.shift-toggle[aria-pressed="true"].violet  { background:var(--c-violet-bg);  color:var(--c-violet-ink);  border-color:var(--c-violet-line); }
+
+/* ── Alerts ── */
+.alerts-page { display:flex; flex-direction:column; gap:18px; }
+.alerts-filter { display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
+.alert-section { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 22px; }
+.alert-section h3 { margin:0 0 14px; font-size:14px; font-weight:600; letter-spacing:-0.01em; display:inline-flex; align-items:center; gap:8px; }
+.alert-section h3 .ct { font-size:11px; font-weight:600; padding:1px 8px; border-radius:99px; background:var(--surface-2); color:var(--ink-3); border:1px solid var(--line); }
+.alert-section h3 .ct.warn  { background:var(--c-rose-bg);  color:var(--c-rose-ink);  border-color:var(--c-rose-line); }
+.alert-section h3 .ct.amber { background:var(--c-amber-bg); color:var(--c-amber-ink); border-color:var(--c-amber-line); }
+.alert-empty {
+  display:inline-flex; align-items:center; gap:8px; padding:12px 18px;
+  background:color-mix(in oklab, var(--c-emerald-bg), white 30%);
+  color:var(--c-emerald-ink); border:1px solid var(--c-emerald-line);
+  border-radius:11px; font-size:13.5px; font-weight:600;
+}
+.alert-list { display:flex; flex-direction:column; gap:8px; }
+.alert-item {
+  display:flex; align-items:center; gap:14px; padding:14px 18px;
+  border:1px solid var(--line); border-radius:12px; background:var(--surface);
+}
+.alert-item .sev { width:4px; height:36px; border-radius:99px; flex-shrink:0; }
+.alert-item.warn .sev { background:var(--c-rose-line); }
+.alert-item.warn { background:color-mix(in oklab, var(--c-rose-bg), white 70%); }
+.alert-item.info .sev { background:var(--c-amber-line); }
+.alert-item.info { background:color-mix(in oklab, var(--c-amber-bg), white 70%); }
+.alert-item .meta { display:flex; flex-direction:column; line-height:1.3; flex:1; }
+.alert-item .meta .ttl { font-weight:600; font-size:14px; }
+.alert-item .meta .sub { font-size:12px; color:var(--ink-3); margin-top:2px; }
+.alert-item .when { font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; color:var(--ink-2); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:4px 10px; white-space:nowrap; }
+
+/* ── Rules (Constraints) ── */
+.rules-layout { display:grid; grid-template-columns:240px 1fr; gap:18px; align-items:start; }
+.rules-staff-list {
+  background:var(--surface); border:1px solid var(--line); border-radius:16px;
+  padding:12px; position:sticky; top:20px;
+  max-height:calc(100vh - 40px); overflow:auto;
+}
+.rules-staff-list h4 { margin:4px 8px 8px; font-size:11px; letter-spacing:0.05em; color:var(--ink-3); text-transform:uppercase; font-weight:600; }
+.rules-staff-item {
+  appearance:none; background:transparent; border:none;
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  padding:10px 12px; border-radius:10px; cursor:pointer; font:inherit; color:var(--ink);
+}
+.rules-staff-item:hover { background:var(--surface-2); }
+.rules-staff-item[aria-pressed="true"] { background:color-mix(in oklab,var(--accent-soft),white 30%); box-shadow:inset 0 0 0 1px var(--accent); }
+.rules-staff-item .dot { width:8px; height:8px; border-radius:99px; flex-shrink:0; }
+.rules-staff-item .nm { font-weight:500; font-size:13.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rules-form { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px 28px; }
+.rules-form h2 { margin:0 0 22px; font-size:17px; font-weight:600; letter-spacing:-0.01em; }
+.rules-numbers { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:22px; }
+.rules-block { margin-bottom:22px; }
+.rules-block .block-label { font-size:13px; font-weight:600; color:var(--ink-2); margin-bottom:10px; display:block; }
+@media (max-width: 900px) { .rules-layout { grid-template-columns:1fr; } .rules-numbers { grid-template-columns:repeat(3,1fr); } }
+
+/* ── Demand (Required) ── */
+.demand-page { display:flex; flex-direction:column; gap:18px; }
+.demand-intro { color:var(--ink-3); font-size:13px; margin-bottom:4px; }
+.shift-card {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:14px 18px;
+  display:flex; align-items:center; gap:18px;
+}
+.shift-card .lhs { display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
+.shift-card .time { font-family:'Manrope',sans-serif; font-size:15px; font-weight:600; color:var(--ink); letter-spacing:-0.01em; white-space:nowrap; }
+.shift-card .sub-name { color:var(--ink-3); font-size:12px; margin-top:2px; }
+.shift-card .rhs { display:flex; align-items:center; gap:12px; }
+.shift-card .req-l { font-size:12px; color:var(--ink-3); }
+.shift-card .demand-unit { font-size:13px; color:var(--ink-3); }
+.add-shift-btn {
+  appearance:none; background:var(--c-emerald-bg); color:var(--c-emerald-ink);
+  border:1px solid var(--c-emerald-line); border-radius:11px; height:44px;
+  padding:0 18px; font-weight:600; font-size:13.5px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+}
+.add-shift-btn:hover { background:color-mix(in oklab, var(--c-emerald-bg), black 6%); }
+.demand-section { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px 24px; }
+.demand-section h3 { margin:0 0 6px; font-size:15px; font-weight:600; letter-spacing:-0.01em; display:inline-flex; align-items:center; gap:8px; }
+.demand-section .section-desc { color:var(--ink-3); font-size:12.5px; margin:0 0 16px; }
+.fixrule-form {
+  display:grid; grid-template-columns:1.4fr 1fr 90px 90px auto;
+  gap:12px; background:color-mix(in oklab, var(--accent-soft), white 50%);
+  border:1px solid color-mix(in oklab, var(--accent-soft), var(--line) 30%);
+  border-radius:12px; padding:14px; margin-bottom:14px; align-items:end;
+}
+@media (max-width: 800px) { .fixrule-form { grid-template-columns:1fr 1fr; } }
+.empty-state {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; padding:28px 20px; background:var(--surface-2);
+  border:1px dashed var(--line-strong); border-radius:12px;
+  color:var(--ink-3); font-size:13px;
+}
+
+/* Sequence table */
+.seq-table { border-collapse:separate; border-spacing:0; width:max-content; margin-top:6px; }
+.seq-table th, .seq-table td { text-align:center; padding:8px; font-weight:500; }
+.seq-table thead th { font-size:11px; color:var(--ink-3); border-bottom:1px solid var(--line); padding:6px 8px 10px; }
+.seq-table tbody th { padding:8px 14px 8px 4px; text-align:left; }
+.seq-cell {
+  appearance:none; width:40px; height:40px; border-radius:9px;
+  border:1px solid var(--line); background:var(--surface);
+  display:inline-grid; place-items:center; cursor:pointer;
+  color:var(--ink-4); font-weight:700; transition:all .15s;
+}
+.seq-cell:hover { border-color:var(--line-strong); }
+.seq-cell.on { background:var(--c-rose-bg); border-color:var(--c-rose-line); color:var(--c-rose-ink); }
+.seq-cell.diag { border-style:none; background:transparent; cursor:default; }
+.seq-legend { color:var(--ink-3); font-size:12px; margin-top:14px; }
+
+/* ── Staff Management ── */
+.staff-page { display:flex; flex-direction:column; gap:16px; }
+.staff-add-form {
+  background:color-mix(in oklab, var(--accent-soft), white 50%);
+  border:1px solid color-mix(in oklab, var(--accent-soft), var(--line) 30%);
+  border-radius:14px; padding:18px;
+  display:grid; grid-template-columns:1fr 160px 130px auto;
+  gap:14px; align-items:end;
+}
+@media (max-width:700px) { .staff-add-form { grid-template-columns:1fr 1fr; } }
+.staff-list { display:flex; flex-direction:column; gap:10px; }
+.staff-row {
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; padding:16px 20px;
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+}
+.staff-row:hover { border-color:var(--line-strong); }
+.staff-row .nm-block { display:flex; flex-direction:column; gap:6px; min-width:180px; }
+.staff-row .nm-block .nm { display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:600; letter-spacing:-0.01em; }
+.staff-row .nm-block .nm .dot { width:8px; height:8px; border-radius:99px; flex-shrink:0; }
+.staff-row .stats { display:flex; gap:16px; font-size:12.5px; color:var(--ink-3); }
+.staff-row .stats .s { display:inline-flex; align-items:baseline; gap:4px; }
+.staff-row .stats .s .v { font-family:'Manrope',sans-serif; font-weight:700; font-size:14px; color:var(--ink); }
+.staff-row .stats .s .v.green { color:var(--success); }
+.staff-row .stats .s .v.rose  { color:var(--c-rose-ink); }
+.staff-row .spacer { flex:1; }
+.staff-row .tags { display:inline-flex; gap:6px; flex-wrap:wrap; }
+.tag { display:inline-flex; align-items:center; padding:3px 10px; border-radius:99px; font-size:11.5px; font-weight:600; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2); }
+.tag.role-ft  { background:var(--c-sky-bg);     color:var(--c-sky-ink);     border-color:var(--c-sky-line); }
+.tag.role-pt  { background:var(--c-emerald-bg); color:var(--c-emerald-ink); border-color:var(--c-emerald-line); }
+.tag.g-f { background:var(--c-rose-bg); color:var(--c-rose-ink); border-color:var(--c-rose-line); }
+.tag.g-m { background:var(--c-sky-bg);  color:var(--c-sky-ink);  border-color:var(--c-sky-line); }
+
+/* ── Misc ── */
+.divider-v { width:1px; height:28px; background:var(--line); }
+.drag-range { outline:2px solid var(--accent); outline-offset:-2px; background:color-mix(in oklab, var(--accent-soft), white 50%) !important; }
+
+/* ── Toast ── */
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:#1B1D1F; color:#fff; padding:10px 20px; border-radius:10px;
+  font-size:13px; font-weight:600; z-index:9999; box-shadow:var(--shadow-lg);
+  pointer-events:none; white-space:nowrap;
+  transition:opacity .3s, transform .3s;
+}
+.toast.hidden { opacity:0; transform:translateX(-50%) translateY(8px); }
+
+/* ── Loading ── */
+#loading {
+  display:flex; align-items:center; justify-content:center;
+  height:100vh; flex-direction:column; gap:16px;
+  color:var(--ink-3); font-size:14px;
+}
+.spinner {
+  width:36px; height:36px;
+  border:3px solid var(--line); border-top-color:var(--accent);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+@media print { .no-print { display:none !important; } }
+  </style>
+</head>
+<body>
+  <div id="loading"><div class="spinner"></div><div>読み込み中...</div></div>
+  <div id="root" style="display:none"></div>
+
+<script id="app-src" type="text/plain">
+const { useState, useMemo, useEffect, useContext, createContext, useRef } = React;
+
+// ── 固定シフト種別 ─────────────────────────────────────────
+const FIXED_TYPES = {
+  休み:   { label:"休み",   short:"休", hours:"—", color:"#cbd5e1", bg:"#f8fafc", text:"#94a3b8", workHours:0, fixed:true },
+  希望休: { label:"希望休", short:"希", hours:"—", color:"#f87171", bg:"#fff5f5", text:"#b91c1c", workHours:0, fixed:true },
+};
+
+// ── 初期シフト定義 ─────────────────────────────────────────
+const INITIAL_SHIFTS = [
+  { key:"早番A", label:"早番A", short:"早A", startH:6,  endH:15, color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { key:"遅番",  label:"遅番",  short:"遅",  startH:12, endH:21, color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { key:"夜勤",  label:"夜勤",  short:"夜",  startH:17, endH:29, color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+  { key:"早番B", label:"早番B", short:"早B", startH:7,  endH:16, color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { key:"早番C", label:"早番C", short:"早C", startH:8,  endH:17, color:"#e11d48", bg:"#fff1f2", text:"#9f1239" },
+];
+
+// ── カラーパレット ─────────────────────────────────────────
+const PILL_COLORS = [
+  { color:"#d97706", bg:"#fef9ee", text:"#92400e" },
+  { color:"#3b82f6", bg:"#eff6ff", text:"#1e40af" },
+  { color:"#059669", bg:"#f0fdf7", text:"#065f46" },
+  { color:"#7c3aed", bg:"#f5f3ff", text:"#4c1d95" },
+  { color:"#e11d48", bg:"#fff1f2", text:"#9f1239" },
+  { color:"#0891b2", bg:"#ecfeff", text:"#164e63" },
+  { color:"#65a30d", bg:"#f7fee7", text:"#3a5c02" },
+  { color:"#c026d3", bg:"#fdf4ff", text:"#701a75" },
+];
+
+const DOW = ["日","月","火","水","木","金","土"];
+
+const COLORS = [
+  "#0ea5e9","#f43f5e","#8b5cf6","#f59e0b","#10b981",
+  "#ec4899","#06b6d4","#84cc16","#ef4444","#a855f7",
+  "#14b8a6","#f97316","#6366f1","#22c55e","#e879f9",
+];
+
+// ── デフォルト制約 ─────────────────────────────────────────
+const DEFAULT_CONSTRAINTS = {
+  minWorkDays:    15,
+  maxWorkDays:    22,
+  minWorkHours:   120,
+  maxWorkHours:   180,
+  maxConsecutive: 5,
+  unavailableDows:  [],
+  preferredShifts: ["早番A","遅番","夜勤","早番B","早番C"],
+};
+
+const DEFAULT_REQUIRED = { 早番A:2, 遅番:3, 夜勤:1, 早番B:1, 早番C:1 };
+
+const ORDER_CONSTRAINTS_DEFAULT = {
+  早番A: ["夜勤"],
+  遅番:  [],
+  夜勤:  ["早番A","早番B","早番C"],
+  早番B: ["夜勤"],
+  早番C: ["夜勤"],
+};
+
+// ── 初期スタッフ ───────────────────────────────────────────
+const INITIAL_STAFF = [
+  { id:1,  name:"伊藤 奈々",   role:"正社員", color:COLORS[0],  gender:"female" },
+  { id:2,  name:"加藤 陽菜",   role:"正社員", color:COLORS[1],  gender:"female" },
+  { id:3,  name:"清水 千夏",   role:"正社員", color:COLORS[2],  gender:"female" },
+  { id:4,  name:"佐藤 美咲",   role:"正社員", color:COLORS[3],  gender:"female" },
+  { id:5,  name:"鈴木 葵",     role:"正社員", color:COLORS[4],  gender:"female" },
+  { id:6,  name:"田中 花子",   role:"正社員", color:COLORS[5],  gender:"female" },
+  { id:7,  name:"中村 さくら", role:"正社員", color:COLORS[6],  gender:"female" },
+  { id:8,  name:"林 美穂",     role:"正社員", color:COLORS[7],  gender:"female" },
+  { id:9,  name:"渡辺 理恵",   role:"正社員", color:COLORS[8],  gender:"female" },
+  { id:10, name:"吉田 梨花",   role:"正社員", color:COLORS[9],  gender:"female" },
+  { id:11, name:"井上 拓也",   role:"正社員", color:COLORS[10], gender:"male"   },
+  { id:12, name:"小林 健二",   role:"正社員", color:COLORS[11], gender:"male"   },
+  { id:13, name:"橋本 修平",   role:"正社員", color:COLORS[12], gender:"male"   },
+  { id:14, name:"松本 大樹",   role:"正社員", color:COLORS[13], gender:"male"   },
+  { id:15, name:"山田 太郎",   role:"正社員", color:COLORS[14], gender:"male"   },
+];
+
+// ── バッジカラーマッピング（新デザイン用） ────────────────
+const BADGE_COLORS = ["amber", "sky", "violet", "emerald", "rose"];
+
+function getShiftColor(shiftKey, customShifts) {
+  if (!shiftKey || shiftKey === "休み") return "slate";
+  if (shiftKey === "希望休") return "rose";
+  const idx = customShifts.findIndex(s => s.key === shiftKey);
+  return idx < 0 ? "slate" : BADGE_COLORS[idx % BADGE_COLORS.length];
+}
+
+// ── ユーティリティ ─────────────────────────────────────────
+const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+const getDow         = (y, m, d) => new Date(y, m, d).getDay();
+const fmt2           = n => String(n).padStart(2, "0");
+const dateKey        = (y, m, d) => `${y}-${fmt2(m + 1)}-${fmt2(d)}`;
+
+function getWeekDates(base) {
+  const d      = new Date(base);
+  const offset = (d.getDay() + 6) % 7;
+  const mon    = new Date(d);
+  mon.setDate(d.getDate() - offset);
+  return Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(mon);
+    dd.setDate(mon.getDate() + i);
+    return dd;
+  });
+}
+
+// 旧デザイン用スタイル定数（CandidatesModal等で使用）
+const C = {
+  bg:"#f7f8fc", surface:"#fff", surface2:"#f1f5f9",
+  border:"#e2e8f0", border2:"#cbd5e1",
+  text:"#1e293b", textSub:"#64748b", textMute:"#94a3b8",
+  accent:"#3b82f6", accentBg:"#eff6ff",
+  green:"#059669", greenBg:"#f0fdf4",
+  amber:"#d97706", amberBg:"#fffbeb",
+  red:"#dc2626",   redBg:"#fff5f5",
+};
+const S = {
+  btn: (bg, c="#fff") => ({ padding:"7px 16px", borderRadius:8, border:"none", background:bg, color:c, fontWeight:700, cursor:"pointer", fontSize:12, whiteSpace:"nowrap", fontFamily:"inherit" }),
+  card: { background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"16px 18px", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" },
+  input: { padding:"8px 12px", borderRadius:8, border:`1px solid ${C.border}`, background:C.surface, color:C.text, fontSize:13, outline:"none" },
+  label: { display:"block", fontSize:11, color:C.textSub, marginBottom:4, fontWeight:600 },
+};
+
+// ── 自動生成エンジン ───────────────────────────────────────
+function autoGenerate(employees, year, month, wishdays, constraints, required, shiftHours, customShifts, orderConstraints, lockedInitial, prevMonthTail, fixedRules) {
+  const days = getDaysInMonth(year, month);
+  const OC = orderConstraints || ORDER_CONSTRAINTS_DEFAULT;
+  const result = {};
+  employees.forEach(e => { result[e.id] = {}; });
+
+  // ロック済みセルを先に埋める
+  if (lockedInitial) {
+    employees.forEach(emp => {
+      Object.entries(lockedInitial[emp.id] || {}).forEach(([d, v]) => {
+        result[emp.id][Number(d)] = v;
+      });
+    });
+  }
+
+  // 固定ルールを適用
+  if (fixedRules && fixedRules.length > 0) {
+    for (let d = 1; d <= days; d++) {
+      const dow = getDow(year, month, d);
+      fixedRules.forEach(rule => {
+        if (rule.dow !== dow) return;
+        if (result[rule.empId]?.[d]) return;
+        if (!result[rule.empId]) return;
+        result[rule.empId][d] = rule.shiftKey;
+      });
+    }
+  }
+
+  // 希望休を適用
+  employees.forEach(emp => {
+    const ws = wishdays[emp.id] || new Set();
+    for (let d = 1; d <= days; d++) {
+      if (!result[emp.id][d] && ws.has(dateKey(year, month, d))) result[emp.id][d] = "希望休";
+    }
+  });
+
+  const getC = emp => constraints[emp.id] || DEFAULT_CONSTRAINTS;
+
+  const remainAvailDays = (id, fromDay) => {
+    let cnt = 0;
+    for (let d = fromDay; d <= days; d++) { if (!result[id][d]) cnt++; }
+    return cnt;
+  };
+
+  const remainNeeded = id => {
+    const c = getC(employees.find(e => e.id === id));
+    const worked = Object.values(result[id]).filter(v => !["休み","希望休"].includes(v)).length;
+    return Math.max(0, c.minWorkDays - worked);
+  };
+
+  for (let d = 1; d <= days; d++) {
+    const dow = getDow(year, month, d);
+    const avail = employees.filter(emp => !result[emp.id][d] && !getC(emp).unavailableDows.includes(dow));
+
+    const workCount  = id => Object.values(result[id]).filter(v => !["休み","希望休"].includes(v)).length;
+    const hoursCount = id => Object.values(result[id]).reduce((a, v) => a + (shiftHours[v] || 0), 0);
+    const consec = id => {
+      let c = 0;
+      if (d === 1 && prevMonthTail) {
+        for (let dd = prevMonthTail.totalDays; dd >= 1; dd--) {
+          const s = prevMonthTail.shifts?.[id]?.[dd] || "休み";
+          if (!["休み","希望休"].includes(s)) c++; else break;
+        }
+        return c;
+      }
+      for (let dd = d - 1; dd >= 1; dd--) { if (!["休み","希望休"].includes(result[id][dd] || "")) c++; else break; }
+      return c;
+    };
+    const checkOrder = (id, type) => {
+      const prev = d === 1
+        ? (prevMonthTail?.shifts?.[id]?.[prevMonthTail.totalDays] || null)
+        : result[id][d - 1];
+      if (!prev) return true;
+      return !(OC[prev] || []).includes(type);
+    };
+
+    for (const s of customShifts) {
+      const needed = required[s.key] || 0; if (!needed) continue;
+      let assigned = 0;
+      const shuffled = [...avail].sort(() => Math.random() - 0.5);
+      shuffled.sort((a, b) => {
+        const ra = remainAvailDays(a.id, d) || 1;
+        const rb = remainAvailDays(b.id, d) || 1;
+        return (remainNeeded(b.id) / rb) - (remainNeeded(a.id) / ra);
+      });
+
+      // パス1: 全制約を満たす
+      for (const emp of shuffled) {
+        if (assigned >= needed || result[emp.id][d]) continue;
+        const c = getC(emp);
+        if (!c.preferredShifts.includes(s.key)) continue;
+        if (consec(emp.id) >= c.maxConsecutive) continue;
+        if (workCount(emp.id) >= c.maxWorkDays) continue;
+        if (hoursCount(emp.id) + (s.endH - s.startH) > c.maxWorkHours) continue;
+        if (!checkOrder(emp.id, s.key)) continue;
+        result[emp.id][d] = s.key; assigned++;
+      }
+      // パス2: 連勤+1を許容
+      if (assigned < needed) {
+        for (const emp of shuffled) {
+          if (assigned >= needed || result[emp.id][d]) continue;
+          const c = getC(emp);
+          if (!c.preferredShifts.includes(s.key)) continue;
+          if (!checkOrder(emp.id, s.key)) continue;
+          if (consec(emp.id) >= c.maxConsecutive + 1) continue;
+          result[emp.id][d] = s.key; assigned++;
+        }
+      }
+      // パス3: 連勤制約を無視
+      if (assigned < needed) {
+        for (const emp of shuffled) {
+          if (assigned >= needed || result[emp.id][d]) continue;
+          const c = getC(emp);
+          if (!c.preferredShifts.includes(s.key)) continue;
+          result[emp.id][d] = s.key; assigned++;
+        }
+      }
+    }
+
+    // 未割当を休みに
+    employees.forEach(emp => { if (!result[emp.id][d]) result[emp.id][d] = "休み"; });
+  }
+  return result;
+}
+
+// ── アラート数計算（候補比較用） ──────────────────────────
+function computeAlertsForShifts(shifts, staffList, customShifts, required, constraints, SHIFT_HOURS, orderConstraints, year, month, daysInMonth) {
+  const isWork = v => !["休み","希望休"].includes(v);
+
+  let staffingCount = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    customShifts.forEach(s => {
+      const needed = required[s.key] || 0; if (!needed) return;
+      const actual = staffList.filter(emp => shifts[emp.id]?.[d] === s.key).length;
+      if (actual < needed) staffingCount++;
+    });
+  }
+
+  let constraintCount = 0;
+  staffList.forEach(emp => {
+    const es = shifts[emp.id] || {};
+    const c  = constraints[emp.id] || DEFAULT_CONSTRAINTS;
+    const workDays  = Object.values(es).filter(isWork).length;
+    const workHours = Object.values(es).reduce((a, v) => a + (SHIFT_HOURS[v] || 0), 0);
+    const reasons = [];
+    if (workDays  < c.minWorkDays)  reasons.push(1);
+    if (workDays  > c.maxWorkDays)  reasons.push(1);
+    if (workHours < c.minWorkHours) reasons.push(1);
+    if (workHours > c.maxWorkHours) reasons.push(1);
+    let maxConsec = 0, cur = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (isWork(es[d] || "休み")) { cur++; maxConsec = Math.max(maxConsec, cur); } else { cur = 0; }
+    }
+    if (maxConsec > c.maxConsecutive) reasons.push(1);
+    for (let d = 2; d <= daysInMonth; d++) {
+      const p = es[d - 1], q = es[d];
+      if (p && q && (orderConstraints[p] || []).includes(q)) reasons.push(1);
+    }
+    if (reasons.length > 0) constraintCount++;
+  });
+
+  return { staffingCount, constraintCount, total: staffingCount + constraintCount };
+}
+
+// ── SVGアイコン ────────────────────────────────────────────
+const Icon = ({ d, size=16, fill=false, stroke=1.6, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24"
+    fill={fill ? 'currentColor' : 'none'}
+    stroke={fill ? 'none' : 'currentColor'}
+    strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" style={style}>
+    {d}
+  </svg>
+);
+const Icons = {
+  Bolt:        p => <Icon {...p} d={<><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"/></>}/>,
+  Save:        p => <Icon {...p} d={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></>}/>,
+  Upload:      p => <Icon {...p} d={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>}/>,
+  Calendar:    p => <Icon {...p} d={<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}/>,
+  Eye:         p => <Icon {...p} d={<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></>}/>,
+  Check:       p => <Icon {...p} d={<><polyline points="20 6 9 17 4 12"/></>}/>,
+  ChevronLeft: p => <Icon {...p} d={<><polyline points="15 18 9 12 15 6"/></>}/>,
+  ChevronRight:p => <Icon {...p} d={<><polyline points="9 18 15 12 9 6"/></>}/>,
+  ChevronDown: p => <Icon {...p} d={<><polyline points="6 9 12 15 18 9"/></>}/>,
+  Search:      p => <Icon {...p} d={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>}/>,
+  Alert:       p => <Icon {...p} d={<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>}/>,
+  Users:       p => <Icon {...p} d={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}/>,
+  User:        p => <Icon {...p} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>}/>,
+  Dice:        p => <Icon {...p} d={<><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="16" cy="16" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></>}/>,
+  Printer:     p => <Icon {...p} d={<><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></>}/>,
+  ArrowDown:   p => <Icon {...p} d={<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}/>,
+  ArrowUp:     p => <Icon {...p} d={<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>}/>,
+  Filter:      p => <Icon {...p} d={<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>}/>,
+  Lock:        p => <Icon {...p} d={<><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>}/>,
+  Plus:        p => <Icon {...p} d={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}/>,
+  Minus:       p => <Icon {...p} d={<><line x1="5" y1="12" x2="19" y2="12"/></>}/>,
+  X:           p => <Icon {...p} d={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}/>,
+  Sunrise:     p => <Icon {...p} d={<><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><polyline points="8 6 12 2 16 6"/></>}/>,
+  Sun:         p => <Icon {...p} d={<><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></>}/>,
+  Sunset:      p => <Icon {...p} d={<><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><polyline points="16 5 12 9 8 5"/></>}/>,
+  Moon:        p => <Icon {...p} d={<><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></>}/>,
+  Grid:        p => <Icon {...p} d={<><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></>}/>,
+};
+
+// ── Context ────────────────────────────────────────────────
+const ShiftContext = createContext(null);
+const useShift = () => useContext(ShiftContext);
+
+// ── Stepper（数値増減UI） ──────────────────────────────────
+function Stepper({ value, onChange, min=0, max=99 }) {
+  return (
+    <div className="stepper">
+      <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>
+        <Icons.Minus size={14}/>
+      </button>
+      <span className="sv">{value}</span>
+      <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>
+        <Icons.Plus size={14}/>
+      </button>
+    </div>
+  );
+}
+
+// ── TimePicker（時刻増減UI、モーダル用） ──────────────────
+function TimePicker({ value, onChange, min, max, label }) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+      <div style={{fontSize:11,color:C.textSub,fontWeight:600}}>{label}</div>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:C.surface2,borderRadius:10,border:`1.5px solid ${C.border2}`,overflow:"hidden",width:56}}>
+        <button onClick={() => onChange(Math.min(max, value+1))} style={{width:"100%",padding:"7px 0",border:"none",background:"none",cursor:"pointer",fontSize:15,color:C.textSub,fontFamily:"inherit"}}>▲</button>
+        <div style={{width:"100%",padding:"6px 0",textAlign:"center",fontSize:20,fontWeight:700,color:C.accent,borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}}>
+          {String(value).padStart(2,"0")}
+        </div>
+        <button onClick={() => onChange(Math.max(min, value-1))} style={{width:"100%",padding:"7px 0",border:"none",background:"none",cursor:"pointer",fontSize:15,color:C.textSub,fontFamily:"inherit"}}>▼</button>
+      </div>
+    </div>
+  );
+}
+
+// ── ShiftBadge（新デザイン用バッジ） ─────────────────────
+function ShiftBadge({ type, showIcon }) {
+  const { customShifts } = useShift();
+  const color = getShiftColor(type, customShifts);
+  const meta  = customShifts.find(s => s.key === type);
+  const label = type === "休み" ? "休"
+              : type === "希望休" ? "希"
+              : (meta?.short || type.slice(0, 2));
+  return <span className={`badge ${color}`}>{label}</span>;
+}
+
+// ── EditPopover（固定位置・app直下でレンダリング） ────────
+function EditPopover({ empId, day, x, y, onClose }) {
+  const { SHIFT_TYPES, setCellShift, staffShifts, staffList } = useShift();
+  const emp     = staffList.find(e => e.id === empId);
+  const current = staffShifts[empId]?.[day] || "休み";
+
+  // 画面端クランプ
+  const left = Math.min(x, window.innerWidth - 290);
+  const top  = Math.min(y, window.innerHeight - 350);
+
+  return (
+    <div className="popover"
+      style={{position:"fixed", left, top, zIndex:500}}
+      onClick={e => e.stopPropagation()}>
+      <div className="pop-head">
+        <span className="who">{emp?.name}</span>
+        <span className="when">{day}日</span>
+        <button className="cls" onClick={onClose}>×</button>
+      </div>
+      <div className="pop-grid">
+        {Object.entries(SHIFT_TYPES).map(([key, val]) => (
+          <button key={key}
+            className={`pop-opt${current === key ? " selected" : ""}`}
+            onClick={() => setCellShift(empId, day, key)}>
+            <span className="pop-badge-swatch" style={{background:val.bg, color:val.text}}>{val.short}</span>
+            <span className="pop-label">{key}</span>
+            <span className="pop-time">{val.hours}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── MonthView ─────────────────────────────────────────────
+function MonthView() {
+  const {
+    staffList, staffShifts, stats, lockedCells,
+    year, month, daysInMonth, today,
+    toggleAllLock, toggleCellLock,
+    prevMonthTail, openEdit, editCell,
+  } = useShift();
+
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // 前月末尾の表示日
+  const prevTailDays = prevMonthTail
+    ? Array.from({ length: prevMonthTail.tailCount }, (_, i) =>
+        prevMonthTail.totalDays - (prevMonthTail.tailCount - 1) + i
+      ).filter(d => d >= 1)
+    : [];
+  const prevYear  = month === 0 ? year - 1 : year;
+  const prevMonth = month === 0 ? 11 : month - 1;
+
+  return (
+    <>
+      <div className="card">
+        <div className="shift-table-wrap">
+          <table className="shift-table">
+            <thead>
+              <tr>
+                <th className="name-col">氏名</th>
+                <th className="constraint-col">
+                  <Icons.Lock size={11} stroke={2}/>
+                </th>
+
+                {/* 前月末尾ヘッダー */}
+                {prevTailDays.map(d => {
+                  const dow = getDow(prevYear, prevMonth, d);
+                  return (
+                    <th key={`ph-${d}`} className="day no-print"
+                      style={{opacity:.45, minWidth:"var(--cell-w)", width:"var(--cell-w)"}}>
+                      <div className={`day-h${dow===0?" sun":dow===6?" sat":""}`}>
+                        <span className="num-d" style={{fontSize:11}}>{d}</span>
+                        <span className="dow">{DOW[dow]}</span>
+                      </div>
+                    </th>
+                  );
+                })}
+                {prevTailDays.length > 0 &&
+                  <th className="no-print" style={{width:6, padding:0, background:"var(--line)"}}/>
+                }
+
+                {/* 当月ヘッダー */}
+                {days.map(d => {
+                  const dow = getDow(year, month, d);
+                  const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                  const cls = ["day-h", dow===0?"sun":dow===6?"sat":"", isToday?"today":""].filter(Boolean).join(" ");
+                  return (
+                    <th key={d} className="day">
+                      <div className={cls}>
+                        <span className="num-d">{d}</span>
+                        <span className="dow">{DOW[dow]}</span>
+                      </div>
+                    </th>
+                  );
+                })}
+                <th className="summary-col">勤務</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffList.map(emp => {
+                const st      = stats.find(s => s.id === emp.id);
+                const locked  = lockedCells[emp.id] || new Set();
+                const allDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+                const allLocked = allDays.every(d => locked.has(d));
+                const anyLocked = allDays.some(d => locked.has(d));
+
+                return (
+                  <tr key={emp.id}>
+                    {/* 名前セル */}
+                    <td className="name-cell">
+                      <div className="name-row">
+                        <div className="name-dot" style={{background: emp.color}}/>
+                        <div className="name-text">
+                          <div className="nm">{emp.name}</div>
+                          <div className="rl">{emp.role}</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* ロックボタンセル */}
+                    <td className="constraint-cell">
+                      <button
+                        className={`lock-btn${allLocked?" all":anyLocked?" some":""}`}
+                        onClick={() => toggleAllLock(emp.id)}
+                        title={allLocked ? "全解除" : "全ロック"}>
+                        {allLocked ? "🔒" : anyLocked ? "◑" : "🔓"}
+                      </button>
+                    </td>
+
+                    {/* 前月末尾セル */}
+                    {prevTailDays.map(d => {
+                      const t   = prevMonthTail?.shifts?.[emp.id]?.[d] || "休み";
+                      const dow = getDow(prevYear, prevMonth, d);
+                      const tdCls = ["no-print", dow===0?"sun":dow===6?"sat":""].filter(Boolean).join(" ");
+                      return (
+                        <td key={`pc-${d}`} className={tdCls} style={{opacity:.45}}>
+                          <div className="shift-cell-inner" style={{cursor:"default"}}>
+                            <ShiftBadge type={t}/>
+                          </div>
+                        </td>
+                      );
+                    })}
+                    {prevTailDays.length > 0 &&
+                      <td className="no-print" style={{width:6, padding:0, background:"var(--line)"}}/>
+                    }
+
+                    {/* 当月セル */}
+                    {days.map(d => {
+                      const type    = staffShifts[emp.id]?.[d] || "休み";
+                      const dow     = getDow(year, month, d);
+                      const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                      const isLocked = locked.has(d);
+                      const isOpen  = editCell?.empId === emp.id && editCell?.day === d;
+
+                      const tdCls = [
+                        dow === 0 ? "sun" : dow === 6 ? "sat" : "",
+                        isToday  ? "today"  : "",
+                        isLocked ? "locked" : "",
+                      ].filter(Boolean).join(" ");
+
+                      let pressTimer = null;
+                      const onPressStart = () => { pressTimer = setTimeout(() => { toggleCellLock(emp.id, d); pressTimer = null; }, 500); };
+                      const onPressEnd   = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+
+                      return (
+                        <td key={d} className={tdCls}>
+                          <div
+                            className="shift-cell-inner"
+                            onClick={e => openEdit(e, emp.id, d)}
+                            onMouseDown={onPressStart}
+                            onMouseUp={onPressEnd}
+                            onMouseLeave={onPressEnd}
+                            onTouchStart={onPressStart}
+                            onTouchEnd={onPressEnd}
+                            onContextMenu={e => e.preventDefault()}>
+                            <ShiftBadge type={type}/>
+                            {isLocked && (
+                              <span style={{position:"absolute",top:2,right:3,fontSize:8,lineHeight:1,pointerEvents:"none"}}>🔒</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+
+                    {/* サマリーセル */}
+                    <td className="summary-cell">
+                      <span className="sn">{st?.workDays ?? 0}</span>
+                      <span className="sl">日</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* フッターサマリー */}
+      <div className="foot-summary">
+        <div className="stat">
+          <span className="sn">{staffList.length}</span>
+          <span className="sl">名</span>
+        </div>
+        <div className="fdiv"/>
+        <div className="stat">
+          <span className="sn">{stats.reduce((a, s) => a + s.workDays, 0)}</span>
+          <span className="sl">勤務合計</span>
+        </div>
+        <div className="fdiv"/>
+        <div className="stat">
+          <span className="sn">{stats.reduce((a, s) => a + s.workHours, 0)}</span>
+          <span className="sl">時間合計</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── WeekView ──────────────────────────────────────────────
+function WeekView() {
+  const {
+    staffList, staffShifts, year, month, daysInMonth, today,
+    weekDates, openEdit, editCell,
+  } = useShift();
+
+  return (
+    <div className="card">
+      <div className="shift-table-wrap">
+        <table className="shift-table">
+          <thead>
+            <tr>
+              <th className="name-col">氏名</th>
+              {weekDates.map((d, i) => {
+                const dow     = d.getDay();
+                const isToday = d.toDateString() === today.toDateString();
+                const cls = ["day-h", dow===0?"sun":dow===6?"sat":"", isToday?"today":""].filter(Boolean).join(" ");
+                return (
+                  <th key={i} style={{minWidth:90, width:90}}>
+                    <div className={cls}>
+                      <span className="num-d">{d.getMonth()+1}/{d.getDate()}</span>
+                      <span className="dow">{DOW[dow]}</span>
+                    </div>
+                  </th>
+                );
+              })}
+              <th className="summary-col">勤務</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staffList.map(emp => {
+              const workDays = Array.from({length:daysInMonth??31},(_,i)=>i+1)
+                .filter(d2 => {
+                  const v = staffShifts[emp.id]?.[d2];
+                  return v && !["休み","希望休"].includes(v);
+                }).length;
+
+              return (
+                <tr key={emp.id}>
+                  <td className="name-cell">
+                    <div className="name-row">
+                      <div className="name-dot" style={{background: emp.color}}/>
+                      <div className="name-text">
+                        <div className="nm">{emp.name}</div>
+                        <div className="rl">{emp.role}</div>
+                      </div>
+                    </div>
+                  </td>
+                  {weekDates.map((d, i) => {
+                    const inMonth = d.getMonth() === month && d.getFullYear() === year;
+                    const dayNum  = d.getDate();
+                    const dow     = d.getDay();
+                    const isToday = d.toDateString() === today.toDateString();
+                    const type    = inMonth ? (staffShifts[emp.id]?.[dayNum] || "休み") : "休み";
+                    const tdCls   = [dow===0?"sun":dow===6?"sat":"", isToday?"today":""].filter(Boolean).join(" ");
+
+                    return (
+                      <td key={i} className={tdCls}>
+                        <div
+                          className="shift-cell-inner"
+                          onClick={e => inMonth && openEdit(e, emp.id, dayNum)}
+                          style={{cursor: inMonth ? "pointer" : "default"}}>
+                          <ShiftBadge type={type} showIcon={true}/>
+                        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="summary-cell">
+                    <span className="sn">{workDays}</span>
+                    <span className="sl">日</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── PersonalTab（個人ビュー） ─────────────────────────────
+function PersonalTab() {
+  const {
+    staffList, staffShifts, stats, wishdays,
+    year, month, daysInMonth, today,
+    openEdit, editCell,
+  } = useShift();
+
+  const [personalId, setPersonalId] = useState(null);
+  const empId = personalId ?? staffList[0]?.id;
+  const emp   = staffList.find(e => e.id === empId);
+  const st    = stats.find(s => s.id === empId);
+  const ws    = wishdays[empId] || new Set();
+
+  const firstDow = getDow(year, month, 1);
+  const days     = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const weeks    = [];
+  let week       = Array(firstDow).fill(null);
+  days.forEach(d => {
+    week.push(d);
+    if (week.length === 7) { weeks.push(week); week = []; }
+  });
+  if (week.length > 0) {
+    while (week.length < 7) week.push(null);
+    weeks.push(week);
+  }
+
+  const daysOk  = st ? (st.workDays  >= (st.minWorkDays  ?? 0) && st.workDays  <= (st.maxWorkDays  ?? 99)) : true;
+  const hoursOk = st ? (st.workHours >= (st.minWorkHours ?? 0) && st.workHours <= (st.maxWorkHours ?? 999)) : true;
+
+  if (!emp) return <div style={{color:"var(--ink-3)",padding:20}}>従業員が登録されていません</div>;
+
+  return (
+    <div>
+      {/* スタッフ選択チップ */}
+      <div className="pv-staff-row">
+        {staffList.map(e => (
+          <button key={e.id}
+            className="pv-chip"
+            aria-pressed={empId === e.id}
+            onClick={() => setPersonalId(e.id)}>
+            <span className="dot" style={{background: e.color}}/>
+            {e.name}
+          </button>
+        ))}
+      </div>
+
+      {/* プロフィール＆サマリー */}
+      <div className="pv-summary">
+        <div className="pv-avatar" style={{background: emp.color}}>
+          {emp.name.charAt(0)}
+        </div>
+        <div className="pv-identity">
+          <div className="nm">{emp.name}</div>
+          <div className="rl">{emp.role} · {emp.gender === "female" ? "女性" : "男性"}</div>
+        </div>
+        <div className="pv-stats">
+          <div className={`pv-stat${daysOk ? " green" : " amber"}`}>
+            <div className="v">{st?.workDays ?? 0}<span className="u">日</span></div>
+            <div className="l">勤務日数</div>
+          </div>
+          <div className={`pv-stat${hoursOk ? " green" : " amber"}`}>
+            <div className="v">{st?.workHours ?? 0}<span className="u">h</span></div>
+            <div className="l">勤務時間</div>
+          </div>
+          <div className="pv-stat rose">
+            <div className="v">{st?.wishOff ?? 0}<span className="u">件</span></div>
+            <div className="l">希望休</div>
+          </div>
+        </div>
+      </div>
+
+      {/* カレンダータイトル */}
+      <div className="pv-title">
+        <h2>月間シフト</h2>
+        <span className="ym">{year}年 {month + 1}月</span>
+      </div>
+
+      {/* カレンダーグリッド */}
+      <div className="pv-calendar">
+        <div className="pv-cal-head">
+          {DOW.map((d, i) => (
+            <div key={i} className={i===0?"sun":i===6?"sat":""}>{d}</div>
+          ))}
+        </div>
+        {weeks.map((week, wi) => (
+          <div key={wi} className="pv-cal-row">
+            {week.map((d, di) => {
+              if (d === null) {
+                return <div key={di} className="empty"/>;
+              }
+              const dow     = getDow(year, month, d);
+              const type    = staffShifts[empId]?.[d] || "休み";
+              const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+              const isWish  = ws.has(dateKey(year, month, d));
+              const isOff   = ["休み", "希望休"].includes(type);
+              const color   = getShiftColor(type, []);
+              const cls     = [
+                dow === 0 ? "sun" : dow === 6 ? "sat" : "",
+                isToday ? "today" : "",
+              ].filter(Boolean).join(" ");
+
+              return (
+                <div key={di} className={cls}
+                  onClick={e => openEdit(e, empId, d)}>
+                  <div className="pv-day-n">{d}</div>
+                  {isWish && <span className="pv-req-tag">希望</span>}
+                  {!isOff && <ShiftBadge type={type}/>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── WishTab（希望休） ─────────────────────────────────────
+function WishTab() {
+  const { staffList, wishdays, toggleWish } = useShift();
+  const todayD = new Date();
+  const [wishDate, setWishDate] = useState(
+    new Date(todayD.getFullYear(), todayD.getMonth(), 1)
+  );
+  const wy    = wishDate.getFullYear();
+  const wm    = wishDate.getMonth();
+  const wDays = getDaysInMonth(wy, wm);
+  const days  = Array.from({ length: wDays }, (_, i) => i + 1);
+
+  return (
+    <div>
+      {/* 月ナビ */}
+      <div className="toolbar" style={{marginTop:0}}>
+        <div className="month-nav">
+          <button onClick={() => setWishDate(new Date(wy, wm - 1, 1))}>
+            <Icons.ChevronLeft size={18}/>
+          </button>
+          <div className="label">{wy}年 {wm + 1}月</div>
+          <button onClick={() => setWishDate(new Date(wy, wm + 1, 1))}>
+            <Icons.ChevronRight size={18}/>
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="req-card">
+          <div className="req-table-wrap">
+            <table className="req-table">
+              <thead>
+                <tr>
+                  <th className="name-col">氏名</th>
+                  {days.map(d => {
+                    const dow = getDow(wy, wm, d);
+                    return (
+                      <th key={d} className={`day${dow===0?" sun":dow===6?" sat":""}`}>
+                        <div style={{fontSize:11, fontWeight:600}}>{d}</div>
+                        <div style={{fontSize:9, color:"var(--ink-4)"}}>{DOW[dow]}</div>
+                      </th>
+                    );
+                  })}
+                  <th className="count-col">件数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffList.map(emp => {
+                  const ws  = wishdays[emp.id] || new Set();
+                  const cnt = days.filter(d => ws.has(dateKey(wy, wm, d))).length;
+                  return (
+                    <tr key={emp.id}>
+                      <td className="req-name-cell">
+                        <div style={{display:"flex", alignItems:"center", gap:8}}>
+                          <span style={{width:8, height:8, borderRadius:"50%", background:emp.color, flexShrink:0}}/>
+                          <span style={{fontWeight:600, fontSize:13.5}}>{emp.name}</span>
+                        </div>
+                      </td>
+                      {days.map(d => {
+                        const dow  = getDow(wy, wm, d);
+                        const k    = dateKey(wy, wm, d);
+                        const on   = ws.has(k);
+                        const tdCls = dow===0?"sun":dow===6?"sat":"";
+                        return (
+                          <td key={d} className={tdCls}>
+                            <button
+                              className={`req-toggle${on ? " on" : ""}`}
+                              onClick={() => toggleWish(emp.id, k)}>
+                              {on ? "希" : ""}
+                            </button>
+                          </td>
+                        );
+                      })}
+                      <td className="req-count-cell">
+                        <span className={`req-count${cnt === 0 ? " zero" : ""}`}>
+                          {cnt}<span className="u">件</span>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AlertTab ─────────────────────────────────────────────
+function AlertTab() {
+  const { staffingAlerts, constraintAlerts, totalAlerts, month, SHIFT_TYPES } = useShift();
+  const [filter, setFilter] = useState("all");
+  const showS = filter === "all" || filter === "staffing";
+  const showC = filter === "all" || filter === "constraint";
+
+  return (
+    <div className="alerts-page">
+      {/* フィルターチップ */}
+      <div className="alerts-filter">
+        {[["all","すべて", totalAlerts],
+          ["staffing","人員不足", staffingAlerts.length],
+          ["constraint","制約違反", constraintAlerts.length]
+        ].map(([key, label, cnt]) => (
+          <button key={key} className="filter-chip"
+            aria-pressed={filter === key}
+            onClick={() => setFilter(key)}>
+            {label}
+            {cnt > 0 && <span style={{marginLeft:4, fontFamily:"Manrope,sans-serif", fontWeight:700}}>{cnt}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* 人員不足セクション */}
+      {showS && (
+        <div className="alert-section">
+          <h3>
+            人員不足
+            <span className={`ct${staffingAlerts.length ? " warn" : ""}`}>
+              {staffingAlerts.length}件
+            </span>
+          </h3>
+          {staffingAlerts.length === 0 ? (
+            <div className="alert-empty"><Icons.Check size={14} stroke={2.5}/> 人員不足なし</div>
+          ) : (
+            <div className="alert-list">
+              {staffingAlerts.map((a, i) => {
+                const t = SHIFT_TYPES[a.shiftKey];
+                return (
+                  <div key={i} className="alert-item warn">
+                    <span className="sev"/>
+                    <span className="badge" style={{background:t?.bg, color:t?.text, borderColor:t?.color+"55", height:28, fontSize:12}}>
+                      {t?.short ?? a.shiftKey}
+                    </span>
+                    <div className="meta">
+                      <div className="ttl">{a.shiftKey} — 人員不足</div>
+                      <div className="sub">
+                        必要 {a.needed}名 / 現在 {a.actual}名（{a.shortage}名不足）
+                      </div>
+                    </div>
+                    <span className="when">{month + 1}/{a.d}（{DOW[a.dow]}）</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 個人制約違反セクション */}
+      {showC && (
+        <div className="alert-section">
+          <h3>
+            個人制約違反
+            <span className={`ct${constraintAlerts.length ? " amber" : ""}`}>
+              {constraintAlerts.length}件
+            </span>
+          </h3>
+          {constraintAlerts.length === 0 ? (
+            <div className="alert-empty"><Icons.Check size={14} stroke={2.5}/> 制約違反なし</div>
+          ) : (
+            <div className="alert-list">
+              {constraintAlerts.map((ca, i) => (
+                <div key={i} className="alert-item info">
+                  <span className="sev"/>
+                  <span style={{width:8, height:8, borderRadius:"50%", background:ca.emp.color, flexShrink:0}}/>
+                  <div className="meta">
+                    <div className="ttl">{ca.emp.name}</div>
+                    <div className="sub">{ca.reasons.join(" / ")}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ConstraintsTab（個人制約） ────────────────────────────
+function ConstraintsTab() {
+  const { staffList, constraints, setConstraints, customShifts } = useShift();
+  const [selId, setSelId] = useState(null);
+  const empId = selId ?? staffList[0]?.id;
+  const emp   = staffList.find(e => e.id === empId);
+  const c     = { ...DEFAULT_CONSTRAINTS, ...(constraints[empId] || {}) };
+  const upd   = (key, val) =>
+    setConstraints(prev => ({ ...prev, [empId]: { ...(prev[empId] || DEFAULT_CONSTRAINTS), [key]: val } }));
+
+  return (
+    <div className="rules-layout">
+      {/* スタッフリスト */}
+      <div className="rules-staff-list">
+        <h4>従業員</h4>
+        {staffList.map(e => (
+          <button key={e.id} className="rules-staff-item"
+            aria-pressed={empId === e.id}
+            onClick={() => setSelId(e.id)}>
+            <span className="dot" style={{background: e.color}}/>
+            <span className="nm">{e.name}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 制約フォーム */}
+      {emp && (
+        <div className="rules-form">
+          <h2>{emp.name} の制約設定</h2>
+
+          {/* 数値フィールド */}
+          <div className="rules-numbers">
+            {[
+              ["最小勤務日数", "minWorkDays",    0, 31],
+              ["最大勤務日数", "maxWorkDays",    0, 31],
+              ["最小時間(h)",  "minWorkHours",   0, 400],
+              ["最大時間(h)",  "maxWorkHours",   0, 400],
+              ["最大連続日",   "maxConsecutive", 1, 14],
+            ].map(([label, key, min, max]) => (
+              <div key={key} className="field">
+                <span className="lbl">{label}</span>
+                <Stepper value={c[key]} onChange={v => upd(key, v)} min={min} max={max}/>
+              </div>
+            ))}
+          </div>
+
+          {/* 出勤不可曜日 */}
+          <div className="rules-block">
+            <span className="block-label">出勤不可の曜日</span>
+            <div className="dow-row">
+              {DOW.map((d, i) => {
+                const on = c.unavailableDows.includes(i);
+                return (
+                  <button key={i}
+                    className={`dow-pill${i===0?" sun":i===6?" sat":""}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      const arr = on
+                        ? c.unavailableDows.filter(x => x !== i)
+                        : [...c.unavailableDows, i];
+                      upd("unavailableDows", arr);
+                    }}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 担当可能シフト */}
+          <div className="rules-block">
+            <span className="block-label">担当可能シフト</span>
+            <div className="shift-toggle-row">
+              {customShifts.map((s, idx) => {
+                const on    = c.preferredShifts.includes(s.key);
+                const color = BADGE_COLORS[idx % BADGE_COLORS.length];
+                return (
+                  <button key={s.key}
+                    className={`shift-toggle${on ? " " + color : ""}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      const arr = on
+                        ? c.preferredShifts.filter(x => x !== s.key)
+                        : [...c.preferredShifts, s.key];
+                      upd("preferredShifts", arr);
+                    }}>
+                    {s.key}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* メモ */}
+          <div className="field">
+            <span className="lbl">メモ</span>
+            <textarea className="txa"
+              value={c.memo || ""}
+              onChange={e => upd("memo", e.target.value)}
+              placeholder="スタッフに関するメモ…"/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── RequiredTab（必要人数） ───────────────────────────────
+function RequiredTab() {
+  const {
+    customShifts, setCustomShifts, required, setRequired,
+    orderConstraints, setOrderConstraints,
+    fixedRules, setFixedRules, staffList, showMsg,
+  } = useShift();
+
+  const [editKey,     setEditKey]     = useState(null);
+  const [editForm,    setEditForm]    = useState({ label:"", startH:9, endH:18 });
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newForm,     setNewForm]     = useState({ label:"", startH:9, endH:18 });
+  const [fixForm,     setFixForm]     = useState({
+    empId: staffList[0]?.id || null, dow:1, startH:9, endH:18,
+  });
+
+  function saveEdit() {
+    if (!editForm.label.trim()) return;
+    const newKey = editForm.label.trim();
+    setCustomShifts(prev => prev.map(s =>
+      s.key !== editKey ? s
+        : { ...s, key:newKey, label:newKey, short:newKey.slice(0,1),
+            startH:Number(editForm.startH), endH:Number(editForm.endH) }
+    ));
+    if (newKey !== editKey) {
+      setRequired(prev => { const n={...prev}; n[newKey]=n[editKey]||0; delete n[editKey]; return n; });
+      setOrderConstraints(prev => {
+        const n={};
+        Object.entries(prev).forEach(([k,v]) => {
+          const nk = k===editKey ? newKey : k;
+          n[nk] = v.map(x => x===editKey ? newKey : x);
+        });
+        return n;
+      });
+    }
+    setEditKey(null);
+  }
+
+  function addShift() {
+    if (!newForm.label.trim()) return;
+    const key = newForm.label.trim();
+    if (customShifts.some(s => s.key === key)) { alert("同じ名前のシフトが既に存在します"); return; }
+    const pc = PILL_COLORS[customShifts.length % PILL_COLORS.length];
+    setCustomShifts(prev => [...prev, { key, label:key, short:key.slice(0,1),
+      startH:Number(newForm.startH), endH:Number(newForm.endH),
+      color:pc.color, bg:pc.bg, text:pc.text }]);
+    setRequired(prev => ({ ...prev, [key]:1 }));
+    setNewForm({ label:"", startH:9, endH:18 });
+    setShowNewForm(false);
+  }
+
+  function deleteShift(key) {
+    if (!window.confirm(`「${key}」を削除しますか？`)) return;
+    setCustomShifts(prev => prev.filter(s => s.key !== key));
+    setRequired(prev => { const n={...prev}; delete n[key]; return n; });
+    setOrderConstraints(prev => {
+      const n={};
+      Object.entries(prev).forEach(([k,v]) => { if (k!==key) n[k]=v.filter(x=>x!==key); });
+      return n;
+    });
+  }
+
+  function addFixedRule() {
+    if (!fixForm.empId) return;
+    const emp = staffList.find(e => e.id === fixForm.empId);
+    const sh = fixForm.startH, eh = fixForm.endH;
+    const timeStr  = `${fmt2(sh)}:00-${eh>24?`翌${fmt2(eh-24)}:00`:`${fmt2(eh)}:00`}`;
+    const ruleName = `${emp?.name.split(" ")[0]}_${DOW[fixForm.dow]}_${timeStr}`;
+    const matchShift = customShifts.find(s => s.startH===sh && s.endH===eh);
+    const newRule = { id:Date.now(), ...fixForm, shiftKey:matchShift?.key||ruleName, displayName:ruleName };
+    setFixedRules(prev => [...prev, newRule]);
+    if (!customShifts.some(s=>s.key===ruleName) && !matchShift) {
+      const pc = PILL_COLORS[customShifts.length % PILL_COLORS.length];
+      setCustomShifts(prev => [...prev, { key:ruleName, label:ruleName, short:ruleName.slice(0,2),
+        startH:sh, endH:eh, color:pc.color, bg:pc.bg, text:pc.text, isFixedRule:true }]);
+      setRequired(prev => ({ ...prev, [ruleName]:1 }));
+    }
+    showMsg("✓ 固定ルールを追加しました");
+  }
+
+  const sortedShifts = [...customShifts].sort((a,b) => a.startH - b.startH);
+
+  return (
+    <div className="demand-page">
+      <p className="demand-intro">勤務形態の追加・編集・削除と、必要人数・順序制約を設定します。</p>
+
+      {/* シフト一覧 */}
+      {sortedShifts.map((s, idx) => {
+        const color   = BADGE_COLORS[customShifts.findIndex(x=>x.key===s.key) % BADGE_COLORS.length];
+        const endLbl  = s.endH > 24 ? `翌${fmt2(s.endH-24)}:00` : `${fmt2(s.endH)}:00`;
+        const isEdit  = editKey === s.key;
+        return (
+          <div key={s.key} className="shift-card" style={isEdit ? {border:"1.5px solid var(--accent)"} : {}}>
+            {isEdit ? (
+              /* 編集モード */
+              <div style={{flex:1, display:"flex", flexWrap:"wrap", gap:14, alignItems:"flex-end"}}>
+                <div className="field" style={{flex:1, minWidth:120}}>
+                  <span className="lbl">名称</span>
+                  <input className="inp" value={editForm.label}
+                    onChange={e => setEditForm(f=>({...f, label:e.target.value}))}
+                    style={{height:40}}/>
+                </div>
+                <TimePicker value={editForm.startH} onChange={v=>setEditForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+                <TimePicker value={editForm.endH}   onChange={v=>setEditForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
+                <div style={{display:"flex", gap:8}}>
+                  <button className="btn btn-primary" style={{height:40}} onClick={saveEdit}>保存</button>
+                  <button className="btn btn-outline" style={{height:40}} onClick={() => setEditKey(null)}>キャンセル</button>
+                </div>
+              </div>
+            ) : (
+              /* 通常モード */
+              <>
+                <div className="lhs">
+                  <span className={`badge ${color}`} style={{flexShrink:0}}>{s.short}</span>
+                  <div>
+                    <div style={{fontWeight:600, fontSize:14}}>{s.key}
+                      {s.isFixedRule && <span style={{marginLeft:6, fontSize:10, color:"var(--c-violet-ink)", background:"var(--c-violet-bg)", border:"1px solid var(--c-violet-line)", borderRadius:4, padding:"1px 5px"}}>固定</span>}
+                    </div>
+                    <div className="time" style={{fontSize:13, color:"var(--ink-3)", fontWeight:500}}>{fmt2(s.startH)}:00 〜 {endLbl}</div>
+                  </div>
+                </div>
+                <div className="rhs">
+                  <span className="req-l">必要人数</span>
+                  <Stepper value={required[s.key]||0} onChange={v=>setRequired(p=>({...p,[s.key]:v}))}/>
+                  <span className="demand-unit">名</span>
+                  {!s.isFixedRule && <>
+                    <button className="btn-mini" onClick={() => { setEditKey(s.key); setEditForm({label:s.label, startH:s.startH, endH:s.endH}); }}>編集</button>
+                    <button className="btn-mini danger" onClick={() => deleteShift(s.key)}>削除</button>
+                  </>}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      <button className="add-shift-btn" onClick={() => { setShowNewForm(true); setNewForm({label:"",startH:9,endH:18}); }}>
+        <Icons.Plus size={16}/> 新しい勤務形態を追加
+      </button>
+
+      {/* 新規シフト追加モーダル */}
+      {showNewForm && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={() => setShowNewForm(false)}>
+          <div style={{background:"var(--surface)",borderRadius:14,padding:24,width:"92%",maxWidth:380,boxShadow:"var(--shadow-lg)"}}
+            onClick={e => e.stopPropagation()}>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>新しい勤務形態を追加</div>
+            <div className="field" style={{marginBottom:14}}>
+              <span className="lbl">名称</span>
+              <input className="inp" value={newForm.label} autoFocus
+                onChange={e => setNewForm(f=>({...f,label:e.target.value}))}
+                placeholder="例：準夜勤"/>
+            </div>
+            <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:20}}>
+              <TimePicker value={newForm.startH} onChange={v=>setNewForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+              <TimePicker value={newForm.endH}   onChange={v=>setNewForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn btn-outline" onClick={() => setShowNewForm(false)}>キャンセル</button>
+              <button className="btn btn-primary" onClick={addShift}>追加</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 固定ルールセクション */}
+      <div className="demand-section">
+        <h3><span className="pin" style={{width:22,height:22,display:"inline-grid",placeItems:"center",borderRadius:6,background:"var(--accent-soft)",color:"var(--accent)"}}>📌</span> 固定ルール</h3>
+        <p className="section-desc">特定スタッフを特定の曜日に固定。自動生成時に最優先で適用されます。</p>
+        <div className="fixrule-form">
+          <div className="field">
+            <span className="lbl">スタッフ</span>
+            <select className="sel" value={fixForm.empId||""} onChange={e=>setFixForm(f=>({...f,empId:Number(e.target.value)}))}>
+              {staffList.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <span className="lbl">曜日</span>
+            <select className="sel" value={fixForm.dow} onChange={e=>setFixForm(f=>({...f,dow:Number(e.target.value)}))}>
+              {DOW.map((d,i) => <option key={i} value={i}>{d}曜日</option>)}
+            </select>
+          </div>
+          <TimePicker value={fixForm.startH} onChange={v=>setFixForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+          <TimePicker value={fixForm.endH}   onChange={v=>setFixForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
+          <button className="btn btn-primary" style={{alignSelf:"flex-end",height:44}} onClick={addFixedRule}>追加</button>
+        </div>
+        {fixedRules.length === 0 ? (
+          <div className="empty-state">
+            <div style={{fontSize:20}}>📌</div>
+            <div>固定ルールがまだありません</div>
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {fixedRules.map(rule => {
+              const emp = staffList.find(e => e.id === rule.empId);
+              if (!emp) return null;
+              const sh = rule.startH??0, eh = rule.endH??0;
+              const timeStr = `${fmt2(sh)}:00〜${eh>24?`翌${fmt2(eh-24)}:00`:`${fmt2(eh)}:00`}`;
+              return (
+                <div key={rule.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"var(--surface-2)",borderRadius:10,border:"1px solid var(--line)",flexWrap:"wrap"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0}}/>
+                  <span style={{fontWeight:600,fontSize:13,flex:1}}>{emp.name}</span>
+                  <span style={{fontSize:12,color:"var(--ink-3)",background:"var(--surface)",borderRadius:6,padding:"2px 8px",border:"1px solid var(--line)"}}>{DOW[rule.dow]}曜日</span>
+                  <span style={{fontSize:12,fontWeight:600,color:"var(--accent)",background:"var(--accent-soft)",borderRadius:6,padding:"2px 8px"}}>{timeStr}</span>
+                  <button className="btn-mini danger" onClick={() => {
+                    setFixedRules(prev => prev.filter(r => r.id!==rule.id));
+                    if (rule.displayName) setCustomShifts(prev => prev.filter(s => s.key!==rule.displayName));
+                  }}>削除</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 順序制約セクション */}
+      <div className="demand-section">
+        <h3>順序制約</h3>
+        <p className="section-desc">前日のシフトの翌日に入れないシフトを指定します（✕ = 禁止）。</p>
+        <div style={{overflowX:"auto"}}>
+          <table className="seq-table">
+            <thead>
+              <tr>
+                <th style={{textAlign:"left",padding:"6px 14px 10px 4px",fontSize:11,color:"var(--ink-3)"}}>前日↓ 翌日→</th>
+                {customShifts.map(s => (
+                  <th key={s.key}><span className={`badge ${getShiftColor(s.key, customShifts)}`} style={{height:24,fontSize:11}}>{s.short}</span></th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {customShifts.map(from => (
+                <tr key={from.key}>
+                  <th><span className={`badge ${getShiftColor(from.key, customShifts)}`} style={{height:24,fontSize:11}}>{from.short}</span></th>
+                  {customShifts.map(to => {
+                    const isSelf = from.key === to.key;
+                    const isOn   = (orderConstraints[from.key]||[]).includes(to.key);
+                    return (
+                      <td key={to.key}>
+                        {isSelf ? (
+                          <button className="seq-cell diag" disabled>—</button>
+                        ) : (
+                          <button className={`seq-cell${isOn?" on":""}`}
+                            onClick={() => setOrderConstraints(prev => {
+                              const cur = prev[from.key]||[];
+                              return {...prev, [from.key]: isOn ? cur.filter(x=>x!==to.key) : [...cur, to.key]};
+                            })}>
+                            {isOn ? "✕" : ""}
+                          </button>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="seq-legend">✕ = 前日にそのシフトがある場合、翌日には入れない</p>
+      </div>
+    </div>
+  );
+}
+
+// ── EmployeeTab（従業員管理） ─────────────────────────────
+function EmployeeTab() {
+  const { staffList, setStaffList, stats, showMsg } = useShift();
+  const [newName,   setNewName]   = useState("");
+  const [newRole,   setNewRole]   = useState("正社員");
+  const [newGender, setNewGender] = useState("female");
+  const [editId,    setEditId]    = useState(null);
+  const [editName,  setEditName]  = useState("");
+  const [editRole,  setEditRole]  = useState("正社員");
+  const [editGender,setEditGender]= useState("female");
+
+  function addStaff() {
+    if (!newName.trim()) return;
+    const id = Date.now();
+    setStaffList(prev => [...prev, { id, name:newName.trim(), role:newRole, gender:newGender, color:COLORS[prev.length%COLORS.length] }]);
+    setNewName("");
+    showMsg("✓ 追加しました");
+  }
+
+  function saveEdit() {
+    if (!editName.trim()) return;
+    setStaffList(prev => prev.map(e =>
+      e.id === editId ? { ...e, name:editName.trim(), role:editRole, gender:editGender } : e
+    ));
+    setEditId(null);
+    showMsg("✓ 更新しました");
+  }
+
+  return (
+    <div className="staff-page">
+      {/* 追加フォーム */}
+      <div className="staff-add-form">
+        <div className="field">
+          <span className="lbl">氏名</span>
+          <input className="inp" value={newName} placeholder="新しい従業員名"
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key==="Enter" && addStaff()}/>
+        </div>
+        <div className="field">
+          <span className="lbl">役職</span>
+          <select className="sel" value={newRole} onChange={e => setNewRole(e.target.value)}>
+            <option value="正社員">正社員</option>
+            <option value="パート">パート</option>
+          </select>
+        </div>
+        <div className="field">
+          <span className="lbl">性別</span>
+          <select className="sel" value={newGender} onChange={e => setNewGender(e.target.value)}>
+            <option value="female">女性</option>
+            <option value="male">男性</option>
+          </select>
+        </div>
+        <button className="btn btn-primary" onClick={addStaff}>
+          <Icons.Plus size={16}/> 追加
+        </button>
+      </div>
+
+      {/* スタッフ一覧 */}
+      <div className="staff-list">
+        {staffList.map(emp => {
+          const st      = stats.find(s => s.id === emp.id);
+          const isEdit  = editId === emp.id;
+          const daysOk  = st?.daysOk;
+          const hoursOk = st?.hoursOk;
+          return (
+            <div key={emp.id} className="staff-row"
+              style={isEdit ? {border:"1.5px solid var(--accent)"} : {}}>
+              {isEdit ? (
+                /* 編集モード */
+                <>
+                  <div className="name-dot" style={{background:emp.color}}/>
+                  <input className="inp" value={editName} autoFocus
+                    onChange={e => setEditName(e.target.value)}
+                    style={{flex:1, minWidth:0, height:40}}/>
+                  <select className="sel" value={editRole} onChange={e => setEditRole(e.target.value)} style={{width:120}}>
+                    <option value="正社員">正社員</option>
+                    <option value="パート">パート</option>
+                  </select>
+                  <select className="sel" value={editGender} onChange={e => setEditGender(e.target.value)} style={{width:100}}>
+                    <option value="female">女性</option>
+                    <option value="male">男性</option>
+                  </select>
+                  <button className="btn btn-primary" style={{height:40}} onClick={saveEdit}>保存</button>
+                  <button className="btn btn-outline" style={{height:40}} onClick={() => setEditId(null)}>キャンセル</button>
+                </>
+              ) : (
+                /* 通常モード */
+                <>
+                  <div className="nm-block">
+                    <div className="nm">
+                      <span className="dot" style={{background:emp.color}}/>
+                      {emp.name}
+                    </div>
+                    <div className="stats">
+                      <span className="s">勤務 <span className={`v${daysOk?" green":""}`}>{st?.workDays??0}日</span></span>
+                      <span className="s">時間 <span className={`v${hoursOk?" green":""}`}>{st?.workHours??0}h</span></span>
+                      <span className="s">希望休 <span className="v rose">{st?.wishOff??0}件</span></span>
+                    </div>
+                  </div>
+                  <div className="spacer"/>
+                  <div className="tags">
+                    <span className={`tag${emp.role==="正社員"?" role-ft":" role-pt"}`}>{emp.role}</span>
+                    <span className={`tag${emp.gender==="female"?" g-f":" g-m"}`}>{emp.gender==="female"?"女性":"男性"}</span>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="btn-mini" onClick={() => { setEditId(emp.id); setEditName(emp.name); setEditRole(emp.role||"正社員"); setEditGender(emp.gender||"female"); }}>編集</button>
+                    <button className="btn-mini danger" onClick={() => setStaffList(prev => prev.filter(e => e.id!==emp.id))}>削除</button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── CandidatesModal ───────────────────────────────────────
+function CandidatesModal({ candidates, onAdopt, onClose, onRegenerate }) {
+  const { customShifts, SHIFT_TYPES } = useShift();
+  const [genCount, setGenCount] = useState(5);
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:400,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 12px",overflowY:"auto"}}
+      onClick={onClose}>
+      <div style={{background:C.surface,borderRadius:16,padding:"20px 22px",width:"100%",maxWidth:620,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}
+        onClick={e => e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+          <div style={{fontWeight:900,fontSize:15,flex:1}}>🎲 候補シフト一覧</div>
+          <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{fontSize:11,color:C.textSub}}>生成数:</span>
+            {[3,5,10].map(n => (
+              <button key={n} onClick={() => setGenCount(n)}
+                style={{padding:"4px 10px",borderRadius:6,border:genCount===n?`2px solid ${C.accent}`:`1px solid ${C.border}`,background:genCount===n?C.accentBg:C.surface2,color:genCount===n?C.accent:C.textSub,fontWeight:genCount===n?700:400,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+                {n}
+              </button>
+            ))}
+            <button onClick={() => onRegenerate(genCount)} style={S.btn(C.accent)}>再生成</button>
+            <button onClick={onClose} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`}}>閉じる</button>
+          </div>
+        </div>
+        {candidates.length === 0 ? (
+          <div style={{textAlign:"center",padding:40,color:C.textMute,background:C.surface2,borderRadius:10}}>候補がありません</div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {candidates.map((cand, i) => {
+              const isTop  = i === 0;
+              const total  = cand.alerts.total;
+              const aColor = total===0?C.green:total<5?C.amber:C.red;
+              const aBg    = total===0?C.greenBg:total<5?C.amberBg:C.redBg;
+              const shiftSummary = customShifts.map(s => {
+                let shortage=0, days_short=0;
+                for (let d=1;d<=cand.daysInMonth;d++) {
+                  const needed=cand.requiredMap[s.key]||0;
+                  const actual=cand.staffList.filter(e=>cand.shifts[e.id]?.[d]===s.key).length;
+                  if (actual<needed) { shortage+=needed-actual; days_short++; }
+                }
+                return { key:s.key, shortage, days_short };
+              }).filter(x => x.shortage > 0);
+              return (
+                <div key={i} style={{borderRadius:12,border:isTop?`2px solid ${C.green}`:`1px solid ${C.border}`,padding:"14px 16px",background:isTop?`${C.green}0a`:C.surface,position:"relative"}}>
+                  {isTop && <div style={{position:"absolute",top:-10,left:16,background:C.green,color:"#fff",fontSize:9,fontWeight:800,borderRadius:5,padding:"2px 9px",letterSpacing:"0.04em"}}>BEST</div>}
+                  <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                    <div style={{fontWeight:800,fontSize:20,color:isTop?C.green:C.textMute,minWidth:32}}>#{i+1}</div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:shiftSummary.length?6:0,flexWrap:"wrap"}}>
+                        <span style={{padding:"4px 12px",borderRadius:8,fontSize:12,fontWeight:700,background:aBg,color:aColor,border:`1px solid ${aColor}33`}}>
+                          {total===0?"✓ アラートなし":`⚠ ${total}件`}
+                        </span>
+                        {total>0 && <>
+                          <span style={{fontSize:11,color:C.textSub}}>人員不足 {cand.alerts.staffingCount}件</span>
+                          <span style={{fontSize:11,color:C.textSub}}>制約違反 {cand.alerts.constraintCount}件</span>
+                        </>}
+                      </div>
+                      {shiftSummary.length>0 && (
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {shiftSummary.map(x => {
+                            const t=SHIFT_TYPES[x.key];
+                            return <span key={x.key} style={{fontSize:10,padding:"1px 7px",borderRadius:5,background:t?.bg||C.surface2,color:t?.text||C.textSub,border:`1px solid ${t?.color||C.border}55`}}>{x.key}: {x.days_short}日不足</span>;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => { onAdopt(cand); onClose(); }}
+                      style={S.btn(isTop?C.green:C.accent)}>採用</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────
+function App() {
+  const today = new Date();
+
+  // ── localStorage ロード ───────────────────────────────
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem("shift_app_v1") || "{}"); }
+    catch(e) { return {}; }
+  })();
+  const toSetMap = obj =>
+    Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, new Set(v)]));
+
+  // ── State ─────────────────────────────────────────────
+  const [currentDate,      setCurrentDate]      = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [view,             setView]             = useState("month");
+  const [tab,              setTab]              = useState("shift");
+  const [density,          setDensity]          = useState("default");
+  const [staffList,        setStaffList]        = useState(saved.staffList        || INITIAL_STAFF);
+  const [staffShifts,      setStaffShifts]      = useState(saved.staffShifts      || {});
+  const [wishdays,         setWishdays]         = useState(() => toSetMap(saved.wishdays     || {}));
+  const [constraints,      setConstraints]      = useState(saved.constraints      || {});
+  const [required,         setRequired]         = useState(saved.required         || DEFAULT_REQUIRED);
+  const [customShifts,     setCustomShifts]     = useState(saved.customShifts     || INITIAL_SHIFTS);
+  const [orderConstraints, setOrderConstraints] = useState(saved.orderConstraints || ORDER_CONSTRAINTS_DEFAULT);
+  const [lockedCells,      setLockedCells]      = useState(() => toSetMap(saved.lockedCells  || {}));
+  const [savedMonths,      setSavedMonths]      = useState(saved.savedMonths      || {});
+  const [fixedRules,       setFixedRules]       = useState(saved.fixedRules       || []);
+  const [editCell,         setEditCell]         = useState(null); // { empId, day, x, y }
+  const [msg,              setMsg]              = useState("");
+  const [msgVisible,       setMsgVisible]       = useState(false);
+  const [candidates,       setCandidates]       = useState([]);
+  const [showCandidates,   setShowCandidates]   = useState(false);
+
+  // ── テーマ適用 ────────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme",   "slate");
+    document.documentElement.setAttribute("data-density", density);
+    document.documentElement.setAttribute("data-badge",   "soft");
+  }, [density]);
+
+  // ── 派生値 ───────────────────────────────────────────
+  const year        = currentDate.getFullYear();
+  const month       = currentDate.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const weekDates   = getWeekDates(currentDate);
+
+  const SHIFT_TYPES = useMemo(() => {
+    const obj = {};
+    customShifts.forEach(s => {
+      const endLabel = s.endH > 24 ? `翌${fmt2(s.endH-24)}:00` : `${fmt2(s.endH)}:00`;
+      obj[s.key] = { label:s.label, short:s.short, hours:`${fmt2(s.startH)}:00-${endLabel}`, color:s.color, bg:s.bg, text:s.text };
+    });
+    return { ...obj, ...FIXED_TYPES };
+  }, [customShifts]);
+
+  const SHIFT_HOURS = useMemo(() => {
+    const obj = { 休み:0, 希望休:0 };
+    customShifts.forEach(s => { obj[s.key] = s.endH - s.startH; });
+    return obj;
+  }, [customShifts]);
+
+  // ── localStorage 保存 ─────────────────────────────────
+  useEffect(() => {
+    try {
+      const data = {
+        staffList, staffShifts, constraints, required,
+        customShifts, orderConstraints, savedMonths, fixedRules,
+        wishdays:    Object.fromEntries(Object.entries(wishdays).map(([k,v])    => [k,[...v]])),
+        lockedCells: Object.fromEntries(Object.entries(lockedCells).map(([k,v]) => [k,[...v]])),
+      };
+      localStorage.setItem("shift_app_v1", JSON.stringify(data));
+    } catch(e) {}
+  }, [staffList, staffShifts, wishdays, constraints, required,
+      customShifts, orderConstraints, lockedCells, savedMonths, fixedRules]);
+
+  // ── Stats ────────────────────────────────────────────
+  const stats = useMemo(() => staffList.map(emp => {
+    const shifts    = staffShifts[emp.id] || {};
+    const isWork    = v => !["休み","希望休"].includes(v);
+    const workDays  = Object.values(shifts).filter(isWork).length;
+    const workHours = Object.values(shifts).reduce((a,v) => a+(SHIFT_HOURS[v]||0), 0);
+    const wishOff   = Object.values(shifts).filter(v => v==="希望休").length;
+    const c         = constraints[emp.id] || DEFAULT_CONSTRAINTS;
+    return { ...emp, workDays, workHours, wishOff,
+      daysOk:  workDays  >= c.minWorkDays  && workDays  <= c.maxWorkDays,
+      hoursOk: workHours >= c.minWorkHours && workHours <= c.maxWorkHours,
+      minWorkDays:c.minWorkDays, maxWorkDays:c.maxWorkDays,
+      minWorkHours:c.minWorkHours, maxWorkHours:c.maxWorkHours,
+    };
+  }), [staffList, staffShifts, constraints, SHIFT_HOURS]);
+
+  // ── アラート ─────────────────────────────────────────
+  const staffingAlerts = useMemo(() => {
+    const alerts = [];
+    for (let d=1; d<=daysInMonth; d++) {
+      const dow = getDow(year,month,d);
+      customShifts.forEach(s => {
+        const needed = required[s.key]||0; if (!needed) return;
+        const actual = staffList.filter(emp => staffShifts[emp.id]?.[d]===s.key).length;
+        if (actual < needed) alerts.push({ d, dow, shiftKey:s.key, needed, actual, shortage:needed-actual });
+      });
+    }
+    return alerts;
+  }, [staffShifts, required, customShifts, staffList, year, month, daysInMonth]);
+
+  const constraintAlerts = useMemo(() => {
+    const alerts = [];
+    staffList.forEach(emp => {
+      const shifts    = staffShifts[emp.id] || {};
+      const c         = constraints[emp.id] || DEFAULT_CONSTRAINTS;
+      const isWork    = v => !["休み","希望休"].includes(v);
+      const workDays  = Object.values(shifts).filter(isWork).length;
+      const workHours = Object.values(shifts).reduce((a,v) => a+(SHIFT_HOURS[v]||0), 0);
+      const reasons   = [];
+      if (workDays  < c.minWorkDays)  reasons.push(`勤務日数不足 (${workDays}/${c.minWorkDays}日)`);
+      if (workDays  > c.maxWorkDays)  reasons.push(`勤務日数超過 (${workDays}/${c.maxWorkDays}日)`);
+      if (workHours < c.minWorkHours) reasons.push(`勤務時間不足 (${workHours}h/${c.minWorkHours}h)`);
+      if (workHours > c.maxWorkHours) reasons.push(`勤務時間超過 (${workHours}h/${c.maxWorkHours}h)`);
+      let maxConsec=0, cur=0;
+      for (let d=1; d<=daysInMonth; d++) {
+        if (isWork(shifts[d]||"休み")) { cur++; maxConsec=Math.max(maxConsec,cur); } else cur=0;
+      }
+      if (maxConsec > c.maxConsecutive) reasons.push(`連続勤務超過 (${maxConsec}連勤/${c.maxConsecutive}日上限)`);
+      for (let d=2; d<=daysInMonth; d++) {
+        const p=shifts[d-1], q=shifts[d];
+        if (p&&q&&(orderConstraints[p]||[]).includes(q)) reasons.push(`順序違反: ${d-1}日${p}→${d}日${q}`);
+      }
+      if (reasons.length) alerts.push({ emp, workDays, workHours, reasons });
+    });
+    return alerts;
+  }, [staffList, staffShifts, constraints, SHIFT_HOURS, year, month, daysInMonth, orderConstraints]);
+
+  const totalAlerts = staffingAlerts.length + constraintAlerts.length;
+
+  // ── 前月末尾 ──────────────────────────────────────────
+  const prevMonthTail = useMemo(() => {
+    const prevYear  = month===0 ? year-1 : year;
+    const prevMonth = month===0 ? 12 : month;
+    const key       = `${prevYear}-${prevMonth}`;
+    const saved2    = savedMonths[key];
+    if (!saved2) return null;
+    const maxC    = staffList.reduce((a,emp) => Math.max(a,(constraints[emp.id]||DEFAULT_CONSTRAINTS).maxConsecutive), DEFAULT_CONSTRAINTS.maxConsecutive);
+    const tailCnt = Math.max(1, maxC - 1);
+    const prevDays = getDaysInMonth(prevYear, prevMonth-1);
+    const tail = {};
+    staffList.forEach(emp => {
+      tail[emp.id] = {};
+      for (let i=0; i<tailCnt; i++) {
+        const d = prevDays - i;
+        if (d>=1) tail[emp.id][d] = saved2[emp.id]?.[d] || "休み";
+      }
+    });
+    return { shifts:tail, totalDays:prevDays, tailCount:tailCnt };
+  }, [savedMonths, year, month, staffList, constraints]);
+
+  // ── アクション ───────────────────────────────────────
+  const showMsg = message => {
+    setMsg(message); setMsgVisible(true);
+    setTimeout(() => setMsgVisible(false), 2800);
+  };
+
+  function openEdit(e, empId, day) {
+    e.stopPropagation();
+    if (editCell?.empId===empId && editCell?.day===day) { setEditCell(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x    = Math.min(rect.left, window.innerWidth  - 295);
+    const y    = rect.bottom + 6 + 330 < window.innerHeight
+               ? rect.bottom + 6
+               : Math.max(8, rect.top - 336);
+    setEditCell({ empId, day, x, y });
+  }
+
+  function toggleCellLock(empId, day) {
+    setLockedCells(prev => {
+      const next = new Set(prev[empId]||[]);
+      next.has(day) ? next.delete(day) : next.add(day);
+      return { ...prev, [empId]:next };
+    });
+  }
+
+  function toggleAllLock(empId) {
+    setLockedCells(prev => {
+      const allDays   = Array.from({length:daysInMonth},(_,i)=>i+1);
+      const current   = prev[empId] || new Set();
+      const allLocked = allDays.every(d => current.has(d));
+      return { ...prev, [empId]: allLocked ? new Set() : new Set(allDays) };
+    });
+  }
+
+  function setCellShift(empId, day, type) {
+    setStaffShifts(prev => ({ ...prev, [empId]:{ ...(prev[empId]||{}), [day]:type } }));
+    setEditCell(null);
+  }
+
+  function toggleWish(empId, key) {
+    setWishdays(prev => {
+      const next = new Set(prev[empId]||[]);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return { ...prev, [empId]:next };
+    });
+  }
+
+  function runAutoGenerate() {
+    const lockedInitial = {};
+    staffList.forEach(emp => {
+      const locked = lockedCells[emp.id]||new Set();
+      lockedInitial[emp.id] = {};
+      locked.forEach(d => { const cur=staffShifts[emp.id]?.[d]; if(cur) lockedInitial[emp.id][d]=cur; });
+    });
+    const gen = autoGenerate(staffList,year,month,wishdays,constraints,required,SHIFT_HOURS,customShifts,orderConstraints,lockedInitial,prevMonthTail,fixedRules);
+    setStaffShifts(prev => { const next={...prev}; staffList.forEach(emp => { next[emp.id]=gen[emp.id]||{}; }); return next; });
+    showMsg("✓ シフトを自動生成しました");
+  }
+
+  function runCandidateGeneration(n=5) {
+    const lockedInitial = {};
+    staffList.forEach(emp => {
+      const locked = lockedCells[emp.id]||new Set();
+      lockedInitial[emp.id] = {};
+      locked.forEach(d => { const cur=staffShifts[emp.id]?.[d]; if(cur) lockedInitial[emp.id][d]=cur; });
+    });
+    const results = [];
+    for (let i=0; i<n; i++) {
+      const gen    = autoGenerate(staffList,year,month,wishdays,constraints,required,SHIFT_HOURS,customShifts,orderConstraints,lockedInitial,prevMonthTail,fixedRules);
+      const alerts = computeAlertsForShifts(gen,staffList,customShifts,required,constraints,SHIFT_HOURS,orderConstraints,year,month,daysInMonth);
+      results.push({ shifts:gen, alerts, daysInMonth, staffList, requiredMap:required });
+    }
+    results.sort((a,b) => a.alerts.total - b.alerts.total);
+    const seen=new Set();
+    const unique=results.filter(r => {
+      const fp=staffList.slice(0,4).map(e=>Array.from({length:Math.min(7,daysInMonth)},(_,d)=>r.shifts[e.id]?.[d+1]||"").join(",")).join("|");
+      if(seen.has(fp)) return false; seen.add(fp); return true;
+    });
+    setCandidates(unique); setShowCandidates(true);
+    showMsg(`✓ ${unique.length}件の候補を生成しました`);
+  }
+
+  function adoptCandidate(cand) {
+    setStaffShifts(prev => { const next={...prev}; staffList.forEach(emp => { next[emp.id]=cand.shifts[emp.id]||{}; }); return next; });
+    showMsg("✓ 候補を採用しました");
+  }
+
+  function confirmAndNextMonth() {
+    if (!window.confirm(`${year}年${month+1}月のシフトを確定して翌月へ進みますか？`)) return;
+    const key = `${year}-${month+1}`;
+    setSavedMonths(prev => ({ ...prev, [key]:staffShifts }));
+    setCurrentDate(new Date(year, month+1, 1));
+    showMsg(`✓ ${year}年${month+1}月を確定しました`);
+  }
+
+  function exportData() {
+    const data = {
+      staffList, staffShifts, constraints, required, customShifts, orderConstraints, savedMonths, fixedRules,
+      wishdays:    Object.fromEntries(Object.entries(wishdays).map(([k,v])    => [k,[...v]])),
+      lockedCells: Object.fromEntries(Object.entries(lockedCells).map(([k,v]) => [k,[...v]])),
+    };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    const a    = document.createElement("a");
+    a.href     = URL.createObjectURL(blob);
+    a.download = `shift_backup_${year}${fmt2(month+1)}.json`;
+    a.click();
+    showMsg("✓ エクスポートしました");
+  }
+
+  function importData() {
+    const input   = document.createElement("input");
+    input.type    = "file"; input.accept = ".json";
+    input.onchange = e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const d = JSON.parse(ev.target.result);
+          if (d.staffList)        setStaffList(d.staffList);
+          if (d.staffShifts)      setStaffShifts(d.staffShifts);
+          if (d.constraints)      setConstraints(d.constraints);
+          if (d.required)         setRequired(d.required);
+          if (d.customShifts)     setCustomShifts(d.customShifts);
+          if (d.orderConstraints) setOrderConstraints(d.orderConstraints);
+          if (d.savedMonths)      setSavedMonths(d.savedMonths);
+          if (d.fixedRules)       setFixedRules(d.fixedRules);
+          if (d.wishdays)         setWishdays(toSetMap(d.wishdays));
+          if (d.lockedCells)      setLockedCells(toSetMap(d.lockedCells));
+          showMsg("✓ インポートしました");
+        } catch { alert("読み込みに失敗しました"); }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  function exportPDF() {
+    const days  = Array.from({length:daysInMonth},(_,i)=>i+1);
+    const title = `勤務表　${year}年${month+1}月`;
+    const pillHtml = type => {
+      const t = SHIFT_TYPES[type]||FIXED_TYPES["休み"];
+      return `<span style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:3px;font-size:9px;font-weight:700;background:${t.bg};color:${t.text};border:1px solid ${t.color}88;text-align:center;">${t.short}</span>`;
+    };
+    const chunkSize = 13;
+    const pages = [];
+    for (let i=0; i<staffList.length; i+=chunkSize) pages.push(staffList.slice(i,i+chunkSize));
+    const makeTable = (chunk,pi) => {
+      const headerCols = days.map(d => {
+        const dow=getDow(year,month,d);
+        const color=dow===0?"#ef4444":dow===6?"#3b82f6":"#475569";
+        return `<td class="dc" style="color:${color};background:#f8fafc;font-weight:700;font-size:9px;text-align:center;padding:2px 0;">${d}<br/><span style="font-size:7px">${DOW[dow]}</span></td>`;
+      }).join("");
+      const rows = chunk.map((emp,ei) => {
+        const bg=ei%2===0?"#fff":"#f8fafc";
+        const cells=days.map(d=>{const type=staffShifts[emp.id]?.[d]||"休み";return `<td class="dc" style="padding:1px 0;text-align:center;background:${bg};">${pillHtml(type)}</td>`;}).join("");
+        const wd=days.filter(d=>!["休み","希望休"].includes(staffShifts[emp.id]?.[d]||"休み")).length;
+        const wh=days.reduce((a,d)=>a+(SHIFT_HOURS[staffShifts[emp.id]?.[d]]||0),0);
+        return `<tr><td class="nc" style="background:${bg};padding:2px 5px;white-space:nowrap;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${emp.color};margin-right:3px;vertical-align:middle;"></span><span style="font-size:11px;font-weight:700;">${emp.name}</span></td>${cells}<td class="wc" style="background:${bg};text-align:center;font-size:11px;font-weight:700;color:#0369a1;">${wd}日</td><td class="hc" style="background:${bg};text-align:center;font-size:11px;font-weight:700;color:#059669;">${wh}h</td></tr>`;
+      }).join("");
+      return `${pi>0?'<div class="pb"></div>':''}<div class="page"><div class="ttl">${title}　<span class="sub">出力日: ${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}${pages.length>1?` (${pi+1}/${pages.length})`:""}</span></div><table><thead><tr><td class="nc" style="background:#f1f5f9;font-size:10px;font-weight:700;">氏名</td>${headerCols}<td class="wc" style="background:#f1f5f9;font-size:9px;font-weight:700;text-align:center;">勤務</td><td class="hc" style="background:#f1f5f9;font-size:9px;font-weight:700;text-align:center;">時間</td></tr></thead><tbody>${rows}</tbody></table></div>`;
+    };
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#fff;padding:10px;}.ttl{font-size:13px;font-weight:900;color:#1e293b;margin-bottom:3px;}.sub{font-size:9px;color:#94a3b8;font-weight:400;}table{border-collapse:collapse;width:100%;table-layout:fixed;}td{border:1px solid #e2e8f0;}.nc{width:88px;}.dc{width:calc((100% - 88px - 30px - 36px) / ${days.length});}.wc{width:30px;}.hc{width:36px;}tr{page-break-inside:avoid;}.page{width:100%;}.pb{page-break-before:always;height:0;}.btn-row{display:flex;gap:8px;margin-bottom:12px;}.print-btn{padding:7px 18px;background:#e11d48;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;}.back-btn{padding:7px 18px;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;}@media print{.btn-row{display:none;}@page{size:A4 landscape;margin:5mm 4mm;}body{padding:0;}}</style></head><body><div class="btn-row"><button class="back-btn" onclick="window.close()">← 閉じる</button><button class="print-btn" onclick="window.print()">🖨 印刷 / PDFで保存</button></div>${pages.map((c,i)=>makeTable(c,i)).join("")}</body></html>`;
+    const w = window.open("","_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+    showMsg("🖨 プレビューを開きました");
+  }
+
+  function exportCalendarPDF() {
+    const days     = Array.from({length:daysInMonth},(_,i)=>i+1);
+    const title    = `${year}年${month+1}月　個人カレンダー`;
+    const firstDow = getDow(year,month,1);
+    const shiftPill = type => {
+      const t=SHIFT_TYPES[type]||FIXED_TYPES["休み"];
+      if (["休み"].includes(type)) return "";
+      return `<div style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:${t.bg};color:${t.text};border:1px solid ${t.color}66;margin-top:3px;">${t.label}</div>`;
+    };
+    const pageHtmls = staffList.map((emp,ei) => {
+      const s=staffShifts[emp.id]||{};
+      const wd=days.filter(d=>!["休み","希望休"].includes(s[d]||"休み")).length;
+      const wh=days.reduce((a,d)=>a+(SHIFT_HOURS[s[d]]||0),0);
+      const calCells=[];
+      for(let i=0;i<firstDow;i++) calCells.push(`<td style="border:1px solid #e2e8f0;background:#fafafa;"></td>`);
+      days.forEach(d=>{const dow=getDow(year,month,d);const type=s[d]||"休み";const t=SHIFT_TYPES[type]||FIXED_TYPES["休み"];const isOff=["休み","希望休"].includes(type);const dayColor=dow===0?"#ef4444":dow===6?"#3b82f6":"#1e293b";const bg=isOff?"#f8fafc":t.bg;calCells.push(`<td style="border:1px solid #e2e8f0;background:${bg};padding:4px;vertical-align:top;width:14.28%;height:52px;"><div style="font-size:13px;font-weight:700;color:${dayColor};">${d}</div>${shiftPill(type)}</td>`);});
+      const total=firstDow+daysInMonth;const remainder=total%7===0?0:7-(total%7);for(let i=0;i<remainder;i++) calCells.push(`<td style="border:1px solid #e2e8f0;background:#fafafa;"></td>`);
+      const rows=[];for(let i=0;i<calCells.length;i+=7) rows.push(`<tr>${calCells.slice(i,i+7).join("")}</tr>`);
+      return `${ei>0?'<div style="page-break-before:always;"></div>':''}<div style="padding:12px 14px;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e2e8f0;"><div style="width:36px;height:36px;border-radius:50%;background:${emp.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:15px;">${emp.name.charAt(0)}</div><div style="font-size:18px;font-weight:900;color:#1e293b;">${emp.name}</div><div style="font-size:14px;color:#64748b;margin-left:8px;">${year}年${month+1}月 — ${wd}日 / ${wh}h</div></div><table style="width:100%;border-collapse:collapse;table-layout:fixed;"><thead><tr>${["日","月","火","水","木","金","土"].map((d,i)=>`<th style="text-align:center;padding:4px 0;font-size:11px;font-weight:700;color:${i===0?"#ef4444":i===6?"#3b82f6":"#475569"};border-bottom:2px solid #e2e8f0;">${d}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+    }).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#fff;}.btn-row{display:flex;gap:8px;padding:12px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;}.print-btn{padding:8px 20px;background:#e11d48;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}.back-btn{padding:8px 20px;background:#fff;color:#475569;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;}@media print{.btn-row{display:none;}@page{size:A4 portrait;margin:6mm;}body{padding:0;}}</style></head><body><div class="btn-row"><button class="back-btn" onclick="window.close()">← 閉じる</button><button class="print-btn" onclick="window.print()">🖨 印刷 / PDFで保存</button><span style="font-size:12px;color:#64748b;align-self:center;">${title}　全${staffList.length}名</span></div>${pageHtmls}</body></html>`;
+    const w=window.open("","_blank");
+    if(w){w.document.write(html);w.document.close();}
+    showMsg("📅 カレンダーPDFを開きました");
+  }
+
+  // ── タブ定義 ─────────────────────────────────────────
+  const TABS = [
+    { key:"shift",       label:"勤務表"    },
+    { key:"personal",    label:"個人ビュー" },
+    { key:"wish",        label:"希望休"    },
+    { key:"alert",       label:"アラート"  },
+    { key:"constraints", label:"個人制約"  },
+    { key:"required",    label:"必要人数"  },
+    { key:"employee",    label:"従業員管理" },
+  ];
+
+  // ── ヘッダーラベル ────────────────────────────────────
+  const headerLabel = view === "month"
+    ? `${year}年 ${month + 1}月`
+    : `${weekDates[0].getMonth()+1}/${weekDates[0].getDate()} 〜 ${weekDates[6].getMonth()+1}/${weekDates[6].getDate()}`;
+
+  // ── Context値 ─────────────────────────────────────────
+  const contextValue = {
+    staffList, setStaffList,
+    staffShifts, setStaffShifts,
+    wishdays, setWishdays,
+    constraints, setConstraints,
+    required, setRequired,
+    customShifts, setCustomShifts,
+    orderConstraints, setOrderConstraints,
+    lockedCells, setLockedCells,
+    fixedRules, setFixedRules,
+    savedMonths, setSavedMonths,
+    year, month, daysInMonth, weekDates, today,
+    SHIFT_TYPES, SHIFT_HOURS,
+    stats, staffingAlerts, constraintAlerts, totalAlerts,
+    prevMonthTail, editCell,
+    showMsg, openEdit,
+    toggleCellLock, toggleAllLock, setCellShift, toggleWish,
+  };
+
+  // ── 月/週切替ハンドラー ──────────────────────────────
+  function prevPeriod() {
+    if (view === "week") {
+      const nd = new Date(currentDate); nd.setDate(nd.getDate()-7); setCurrentDate(nd);
+    } else {
+      setCurrentDate(new Date(year, month-1, 1));
+    }
+  }
+  function nextPeriod() {
+    if (view === "week") {
+      const nd = new Date(currentDate); nd.setDate(nd.getDate()+7); setCurrentDate(nd);
+    } else {
+      setCurrentDate(new Date(year, month+1, 1));
+    }
+  }
+
+  return (
+    <ShiftContext.Provider value={contextValue}>
+      <div className="app" onClick={() => editCell && setEditCell(null)}>
+
+        {/* ── トップバー ── */}
+        <div className="topbar">
+          <div className="brand">
+            <div className="brand-mark">勤</div>
+            <div>
+              <div className="brand-title">勤務表</div>
+            </div>
+          </div>
+          <div className="topbar-actions">
+            <button className="btn btn-ghost" onClick={exportPDF}>
+              <Icons.Printer size={16}/>プレビュー
+            </button>
+            <button className="btn btn-ghost" onClick={exportCalendarPDF}>
+              <Icons.Calendar size={16}/>カレンダー
+            </button>
+            <button className="btn btn-ghost" onClick={importData}>
+              <Icons.Upload size={16}/>読込
+            </button>
+            <div className="divider-v"/>
+            <button className="btn btn-outline" onClick={exportData}>
+              <Icons.Save size={16}/>保存
+            </button>
+            <button className="btn btn-outline" onClick={confirmAndNextMonth}>
+              <Icons.Check size={16}/>確定して翌月
+            </button>
+            <button className="btn btn-outline" onClick={() => runCandidateGeneration(5)}>
+              <Icons.Dice size={16}/>候補生成
+            </button>
+            <button className="btn btn-primary" onClick={runAutoGenerate}>
+              <Icons.Bolt size={18}/>自動生成
+            </button>
+          </div>
+        </div>
+
+        {/* ── タブ ── */}
+        <div className="tabs">
+          {TABS.map(({ key, label }) => (
+            <button key={key} className="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}>
+              {label}
+              {key === "alert" && totalAlerts > 0 &&
+                <span className="badge-count">{totalAlerts}</span>
+              }
+            </button>
+          ))}
+        </div>
+
+        {/* ── 勤務表タブ ── */}
+        {tab === "shift" && (
+          <div className="toolbar">
+            <div className="month-nav">
+              <button onClick={prevPeriod}><Icons.ChevronLeft size={18}/></button>
+              <div className="label">{headerLabel}</div>
+              <button onClick={nextPeriod}><Icons.ChevronRight size={18}/></button>
+            </div>
+            <div className="seg">
+              <button aria-pressed={view==="month"} onClick={() => setView("month")}>月表示</button>
+              <button aria-pressed={view==="week"}  onClick={() => setView("week")}>週表示</button>
+            </div>
+            <div className="toolbar-spacer"/>
+            <div className="seg">
+              <button aria-pressed={density==="compact"}     onClick={() => setDensity("compact")}>密</button>
+              <button aria-pressed={density==="default"}     onClick={() => setDensity("default")}>標準</button>
+              <button aria-pressed={density==="comfortable"} onClick={() => setDensity("comfortable")}>広</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── タブコンテンツ ── */}
+        <div onClick={e => e.stopPropagation()}>
+          {tab === "shift"       && view === "month" && <MonthView/>}
+          {tab === "shift"       && view === "week"  && <WeekView/>}
+          {tab === "personal"                        && <PersonalTab/>}
+          {tab === "wish"                            && <WishTab/>}
+          {tab === "alert"                           && <AlertTab/>}
+          {tab === "constraints"                     && <ConstraintsTab/>}
+          {tab === "required"                        && <RequiredTab/>}
+          {tab === "employee"                        && <EmployeeTab/>}
+        </div>
+      </div>
+
+      {/* ── EditPopover（固定位置） ── */}
+      {editCell && (
+        <EditPopover
+          empId={editCell.empId}
+          day={editCell.day}
+          x={editCell.x}
+          y={editCell.y}
+          onClose={() => setEditCell(null)}
+        />
+      )}
+
+      {/* ── 候補モーダル ── */}
+      {showCandidates && (
+        <CandidatesModal
+          candidates={candidates}
+          onAdopt={adoptCandidate}
+          onClose={() => setShowCandidates(false)}
+          onRegenerate={n => runCandidateGeneration(n)}
+        />
+      )}
+
+      {/* ── トースト通知 ── */}
+      <div className={`toast${msgVisible ? "" : " hidden"}`}>{msg}</div>
+
+    </ShiftContext.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<script>
+  window.addEventListener('load', function() {
+    try {
+      const src = document.getElementById('app-src').textContent;
+      const out = Babel.transform(src, { presets: ['react'] }).code;
+      eval(out);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('root').style.display = 'block';
+    } catch(e) {
+      document.getElementById('loading').innerHTML =
+        '<div style="color:#ef4444;padding:20px;font-size:13px">エラー: ' + e.message + '</div>';
+      console.error(e);
+    }
+  });
+</script>
+</body>
+</html>
