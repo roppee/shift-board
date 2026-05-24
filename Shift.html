@@ -494,11 +494,14 @@ const ShiftContext = createContext(null);
 const useShift = () => useContext(ShiftContext);
 
 // ── 共通コンポーネント ─────────────────────────────────────
-function Pill({ type, small }) {
+function Pill({ type, small, pad, fsize, mw }) {
   const { SHIFT_TYPES } = useShift();
-  const t = SHIFT_TYPES[type] || FIXED_TYPES["休み"];
+  const t    = SHIFT_TYPES[type] || FIXED_TYPES["休み"];
+  const p    = pad   ?? (small ? "2px 5px" : "3px 9px");
+  const fs   = fsize ?? (small ? 9 : 11);
+  const minW = mw    ?? (small ? 20 : 28);
   return (
-    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:small?"2px 5px":"3px 9px",borderRadius:6,fontSize:small?9:11,fontWeight:700,background:t.bg,color:t.text,border:`1px solid ${t.color}55`,minWidth:small?20:28,whiteSpace:"nowrap"}}>
+    <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:p,borderRadius:6,fontSize:fs,fontWeight:700,background:t.bg,color:t.text,border:`1px solid ${t.color}55`,minWidth:minW,whiteSpace:"nowrap"}}>
       {small ? t.short : t.label}
     </span>
   );
@@ -547,7 +550,12 @@ function CountPicker({ value, onChange }) {
 function MonthView() {
   const { staffList, staffShifts, stats, lockedCells, editCell, setEditCell,
           year, month, daysInMonth, today, toggleAllLock, toggleCellLock,
-          prevMonthTail, SHIFT_TYPES } = useShift();
+          prevMonthTail, SHIFT_TYPES, density } = useShift();
+  const DS = density==="compact"
+    ? { nameColW:120, namePad:"3px 8px",  dataPad:"1px 0",  bp:"1px 4px",  bfs:9,  bmw:16 }
+    : density==="wide"
+    ? { nameColW:160, namePad:"7px 14px", dataPad:"4px 1px",bp:"4px 12px", bfs:12, bmw:28 }
+    : { nameColW:150, namePad:"5px 12px", dataPad:"2px 1px",bp:"2px 5px",  bfs:9,  bmw:20 };
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const prevTailDays = prevMonthTail
     ? Array.from({length:prevMonthTail.tailCount},(_,i)=>prevMonthTail.totalDays-(prevMonthTail.tailCount-1)+i).filter(d=>d>=1)
@@ -558,7 +566,7 @@ function MonthView() {
       <table style={{borderCollapse:"collapse",width:"100%",minWidth:900,fontSize:11}}>
         <thead>
           <tr>
-            <th style={{...S.th(150),textAlign:"left",paddingLeft:12}}>氏名</th>
+            <th style={{...S.th(DS.nameColW),textAlign:"left",paddingLeft:12}}>氏名</th>
             {prevTailDays.map(d => {
               const prevMonth2 = month===0?11:month-1;
               const dow = getDow(month===0?year-1:year, prevMonth2, d);
@@ -593,7 +601,7 @@ function MonthView() {
             const anyLocked = allDays.some(d => locked.has(d));
             return (
               <tr key={emp.id} style={{background:ei%2===0?C.surface:C.surface2}}>
-                <td style={{padding:"5px 12px",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>
+                <td style={{padding:DS.namePad,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0}}/>
                     <div style={{flex:1}}>
@@ -626,14 +634,14 @@ function MonthView() {
                   const onPressStart = () => { pressTimer = setTimeout(() => { toggleCellLock(emp.id, d); pressTimer = null; }, 500); };
                   const onPressEnd   = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
                   return (
-                    <td key={d} style={{padding:"2px 1px",borderBottom:`1px solid ${C.border}`,textAlign:"center",position:"relative",background:isLocked?C.amberBg:""}}>
+                    <td key={d} style={{padding:DS.dataPad,borderBottom:`1px solid ${C.border}`,textAlign:"center",position:"relative",background:isLocked?C.amberBg:""}}>
                       <button
                         onClick={() => setEditCell(isOpen ? null : cid)}
                         onMouseDown={onPressStart} onMouseUp={onPressEnd} onMouseLeave={onPressEnd}
                         onTouchStart={onPressStart} onTouchEnd={onPressEnd}
                         onContextMenu={e => e.preventDefault()}
                         style={{background:"none",border:"none",cursor:"pointer",padding:1,position:"relative",WebkitUserSelect:"none",userSelect:"none",whiteSpace:"nowrap",lineHeight:1}}>
-                        <Pill type={type} small/>
+                        <Pill type={type} small pad={DS.bp} fsize={DS.bfs} mw={DS.bmw}/>
                         {isLocked && <span style={{position:"absolute",top:-3,right:-3,fontSize:7,lineHeight:1}}>🔒</span>}
                       </button>
                       {isOpen && (
@@ -718,23 +726,36 @@ function WeekView() {
 
 // ── 希望休タブ ────────────────────────────────────────────
 function WishTab() {
-  const { staffList, wishdays, toggleWish } = useShift();
+  const { staffList, wishdays, toggleWish, density, setDensity } = useShift();
+  const DS = density==="compact"
+    ? { nameColW:120, namePad:"3px 8px",  dataPad:"1px 0",  btnSize:18 }
+    : density==="wide"
+    ? { nameColW:160, namePad:"7px 14px", dataPad:"4px 1px",btnSize:28 }
+    : { nameColW:150, namePad:"5px 12px", dataPad:"2px 1px",btnSize:22 };
   const today = new Date();
   const [wishDate, setWishDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const wy = wishDate.getFullYear(), wm = wishDate.getMonth(), wDays = getDaysInMonth(wy, wm);
   const days = Array.from({ length: wDays }, (_, i) => i + 1);
   return (
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <button onClick={() => setWishDate(new Date(wy,wm-1,1))} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub}}>‹</button>
         <span style={{fontWeight:800,fontSize:14}}>{wy}年 {wm+1}月</span>
         <button onClick={() => setWishDate(new Date(wy,wm+1,1))} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.textSub}}>›</button>
+        <div style={{display:"flex",gap:3,background:C.surface2,borderRadius:9,padding:3,border:`1px solid ${C.border}`,marginLeft:"auto"}}>
+          {[["compact","密"],["standard","標準"],["wide","広"]].map(([val,lbl]) => (
+            <button key={val} onClick={() => setDensity(val)}
+              style={{padding:"6px 12px",borderRadius:7,border:"none",background:density===val?C.accent:"transparent",color:density===val?"#fff":C.textSub,fontWeight:700,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+              {lbl}
+            </button>
+          ))}
+        </div>
       </div>
       <div style={{overflowX:"auto"}}>
         <table style={{borderCollapse:"collapse",width:"100%",minWidth:800,fontSize:11}}>
           <thead>
             <tr>
-              <th style={{...S.th(150),textAlign:"left",paddingLeft:12}}>氏名</th>
+              <th style={{...S.th(DS.nameColW),textAlign:"left",paddingLeft:12}}>氏名</th>
               {days.map(d => {
                 const dow = getDow(wy, wm, d);
                 return <th key={d} style={{...S.th(30),color:dow===0?"var(--color-sunday)":dow===6?"var(--color-saturday)":C.textMute}}><div>{d}</div><div style={{fontSize:8}}>{DOW[dow]}</div></th>;
@@ -747,12 +768,12 @@ function WishTab() {
               const ws = wishdays[emp.id] || new Set();
               return (
                 <tr key={emp.id} style={{background:ei%2===0?C.surface:C.surface2}}>
-                  <td style={{padding:"5px 12px",borderBottom:`1px solid ${C.border}`}}><div style={{fontWeight:600}}>{emp.name}</div></td>
+                  <td style={{padding:DS.namePad,borderBottom:`1px solid ${C.border}`}}><div style={{fontWeight:600}}>{emp.name}</div></td>
                   {days.map(d => {
                     const k = dateKey(wy, wm, d), wished = ws.has(k);
                     return (
-                      <td key={d} style={{padding:"2px 1px",borderBottom:`1px solid ${C.border}`,textAlign:"center"}}>
-                        <button onClick={() => toggleWish(emp.id, k)} style={{width:22,height:22,borderRadius:5,border:wished?`2px solid ${C.red}`:`1px solid ${C.border}`,background:wished?C.redBg:C.surface2,cursor:"pointer",fontSize:9,fontWeight:700,color:wished?C.red:C.border2}}>{wished?"希":""}</button>
+                      <td key={d} style={{padding:DS.dataPad,borderBottom:`1px solid ${C.border}`,textAlign:"center"}}>
+                        <button onClick={() => toggleWish(emp.id, k)} style={{width:DS.btnSize,height:DS.btnSize,borderRadius:5,border:wished?`2px solid ${C.red}`:`1px solid ${C.border}`,background:wished?C.redBg:C.surface2,cursor:"pointer",fontSize:9,fontWeight:700,color:wished?C.red:C.border2}}>{wished?"希":""}</button>
                       </td>
                     );
                   })}
@@ -1432,6 +1453,7 @@ function App() {
   const [printModal,       setPrintModal]       = useState(null);
   const [staffSearch,      setStaffSearch]      = useState("");
   const [staffFilter,      setStaffFilter]      = useState("all");
+  const [density,          setDensity]          = useState("standard");
 
   const SHIFT_TYPES = useMemo(() => {
     const obj = {};
@@ -1885,6 +1907,7 @@ ${pageHtmls}
     prevMonthTail,
     showMsg,
     toggleCellLock, toggleAllLock, setCellShift, toggleWish,
+    density, setDensity,
   };
 
   return (
@@ -1959,6 +1982,14 @@ ${pageHtmls}
                 {[["all","全員"],["正社員","正社員"],["パート","パート"]].map(([val,lbl]) => (
                   <button key={val} onClick={() => setStaffFilter(val)}
                     style={{padding:"6px 12px",borderRadius:7,border:"none",background:staffFilter===val?C.accent:"transparent",color:staffFilter===val?"#fff":C.textSub,fontWeight:700,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:3,background:C.surface2,borderRadius:9,padding:3,border:`1px solid ${C.border}`}}>
+                {[["compact","密"],["standard","標準"],["wide","広"]].map(([val,lbl]) => (
+                  <button key={val} onClick={() => setDensity(val)}
+                    style={{padding:"6px 12px",borderRadius:7,border:"none",background:density===val?C.accent:"transparent",color:density===val?"#fff":C.textSub,fontWeight:700,cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
                     {lbl}
                   </button>
                 ))}
