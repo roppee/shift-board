@@ -1237,6 +1237,36 @@ function PersonalTab() {
   const st  = stats.find(s => s.id === personalId);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   if (!emp) return <div style={{color:C.textMute}}>従業員が登録されていません</div>;
+
+  // 円グラフデータ
+  const pieCounts = {};
+  days.forEach(d => {
+    const raw = staffShifts[emp.id]?.[d] || "休み";
+    const key = ["休み","希望休"].includes(raw) ? "休日" : raw;
+    pieCounts[key] = (pieCounts[key] || 0) + 1;
+  });
+  const pieSlices = Object.entries(pieCounts)
+    .map(([key, count]) => {
+      const t = key === "休日"
+        ? { color:"#cbd5e1" }
+        : (SHIFT_TYPES[key] || { color:"#cbd5e1" });
+      return { key, count, color: t.color };
+    })
+    .sort((a, b) => b.count - a.count);
+  const PIE_R=68, PIE_CX=80, PIE_CY=80;
+  let pieAng = -Math.PI / 2;
+  const piePaths = pieSlices.map(s => {
+    const frac = s.count / daysInMonth;
+    const sw   = frac * 2 * Math.PI;
+    const sa   = pieAng, ea = pieAng + sw;
+    pieAng = ea;
+    if (frac >= 1) return { ...s, frac, full:true };
+    const x1=(PIE_CX+PIE_R*Math.cos(sa)).toFixed(2), y1=(PIE_CY+PIE_R*Math.sin(sa)).toFixed(2);
+    const x2=(PIE_CX+PIE_R*Math.cos(ea)).toFixed(2), y2=(PIE_CY+PIE_R*Math.sin(ea)).toFixed(2);
+    return { ...s, frac, full:false,
+      d:`M${PIE_CX} ${PIE_CY}L${x1} ${y1}A${PIE_R} ${PIE_R} 0 ${sw>Math.PI?1:0} 1 ${x2} ${y2}Z` };
+  });
+
   return (
     <div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
@@ -1287,6 +1317,28 @@ function PersonalTab() {
             </div>
           );
         })}
+      </div>
+
+      <div style={{...S.card,marginTop:16}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:14}}>シフト内訳</div>
+        <div style={{display:"flex",gap:24,alignItems:"center",flexWrap:"wrap"}}>
+          <svg width="160" height="160" viewBox="0 0 160 160" style={{flexShrink:0}}>
+            {piePaths.map(s => s.full
+              ? <circle key={s.key} cx={PIE_CX} cy={PIE_CY} r={PIE_R} fill={s.color}/>
+              : <path   key={s.key} d={s.d} fill={s.color} stroke="#fff" strokeWidth="2"/>
+            )}
+          </svg>
+          <div style={{display:"flex",flexDirection:"column",gap:8,flex:1,minWidth:140}}>
+            {piePaths.map(s => (
+              <div key={s.key} style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:12,height:12,borderRadius:3,background:s.color,flexShrink:0,border:`1px solid ${s.color}88`}}/>
+                <span style={{fontSize:12,fontWeight:600,flex:1,color:C.text}}>{s.key}</span>
+                <span style={{fontSize:12,color:C.textSub,fontWeight:700}}>{s.count}日</span>
+                <span style={{fontSize:11,color:C.textMute,minWidth:38,textAlign:"right"}}>{Math.round(s.frac*100)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
