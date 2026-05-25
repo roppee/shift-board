@@ -995,7 +995,7 @@ function ConstraintsTab() {
 function RequiredTab() {
   const { customShifts, setCustomShifts, required, setRequired,
           orderConstraints, setOrderConstraints, fixedRules, setFixedRules,
-          staffList, showMsg, SHIFT_TYPES, subTab } = useShift();
+          staffList, showMsg, SHIFT_TYPES } = useShift();
   const [editKey,       setEditKey]       = useState(null);
   const [editForm,      setEditForm]      = useState({ label:"", startH:9, endH:18 });
   const [newForm,       setNewForm]       = useState({ label:"", startH:9, endH:18 });
@@ -1050,13 +1050,9 @@ function RequiredTab() {
 
   return (
     <div>
-      <p style={{color:C.textSub,fontSize:13,marginBottom:16}}>
-        {subTab==="required_order" ? "前日のシフト翌日に入れないシフトの組み合わせを設定します。" : "勤務形態の追加・編集・削除と、必要人数・固定ルールを設定します。"}
-      </p>
+      <p style={{color:C.textSub,fontSize:13,marginBottom:16}}>勤務形態の追加・編集・削除と、必要人数・固定ルール・順序制約を設定します。</p>
 
-      {subTab === "required_fixed" && (
-        <>
-          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
             {sortedShifts.map(s => {
               const t = SHIFT_TYPES[s.key];
               const isEdit = editKey === s.key;
@@ -1128,7 +1124,7 @@ function RequiredTab() {
             </div>
           )}
 
-          <div style={{...S.card,padding:"16px",marginBottom:16}}>
+          <div id="section-fixed" style={{...S.card,padding:"16px",marginBottom:16}}>
             <div style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:4}}>📌 固定ルール</div>
             <p style={{fontSize:12,color:C.textSub,marginBottom:14}}>特定スタッフを特定の曜日・時間帯に固定。自動生成時に最優先で割り当てられます。登録したルールは勤務形態一覧にも追加表示されます。</p>
             <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",padding:"12px",background:C.accentBg,borderRadius:10,marginBottom:14,border:`1px solid ${C.accent}33`}}>
@@ -1193,12 +1189,9 @@ function RequiredTab() {
               </div>
             )}
           </div>
-        </>
-      )}
 
-      {subTab === "required_order" && (
-        <div style={S.card}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>順序制約</div>
+      <div id="section-order" style={S.card}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>順序制約</div>
           <div style={{overflowX:"auto"}}>
             <table style={{borderCollapse:"collapse",fontSize:12}}>
               <thead>
@@ -1231,7 +1224,6 @@ function RequiredTab() {
           </div>
           <div style={{marginTop:8,fontSize:11,color:C.textMute}}>✕ = 前日のシフトの翌日には入れない</div>
         </div>
-      )}
     </div>
   );
 }
@@ -2024,7 +2016,10 @@ ${pageHtmls}
                     onMouseLeave={() => {
                       dropdownTimer.current = setTimeout(() => setRequiredDropdown(false), 150);
                     }}>
-                    <button onClick={() => { setTab(key); setSubTab("required_fixed"); }} style={btnStyle}>
+                    <button onClick={() => {
+                      setTab(key); setSubTab("required_fixed");
+                      setTimeout(() => document.getElementById("section-fixed")?.scrollIntoView({behavior:"smooth",block:"start"}), 60);
+                    }} style={btnStyle}>
                       {TabIcon && <TabIcon size={13}/>}
                       {label}
                       <span style={{fontSize:9,marginLeft:1,color:isActive?activeColor:"#9AA0AA"}}>▾</span>
@@ -2109,8 +2104,11 @@ ${pageHtmls}
           {[["required_fixed","固定ルール"],["required_order","順序制約"]].map(([st,sl]) => {
             const isSub = tab==="required" && subTab===st;
             return (
-              <button key={st} onClick={() => { setTab("required"); setSubTab(st); setRequiredDropdown(false); }}
-                style={{display:"block",width:"100%",textAlign:"left",padding:"8px 16px",border:"none",background:isSub?C.accentBg:"transparent",color:isSub?C.accent:C.text,fontSize:12,fontWeight:isSub?700:500,cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}>
+              <button key={st} onClick={() => {
+                setTab("required"); setSubTab(st); setRequiredDropdown(false);
+                const id = st === "required_fixed" ? "section-fixed" : "section-order";
+                setTimeout(() => document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"}), 60);
+              }} style={{display:"block",width:"100%",textAlign:"left",padding:"8px 16px",border:"none",background:isSub?C.accentBg:"transparent",color:isSub?C.accent:C.text,fontSize:12,fontWeight:isSub?700:500,cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}>
                 {sl}
               </button>
             );
