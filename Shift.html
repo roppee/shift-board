@@ -995,7 +995,7 @@ function ConstraintsTab() {
 function RequiredTab() {
   const { customShifts, setCustomShifts, required, setRequired,
           orderConstraints, setOrderConstraints, fixedRules, setFixedRules,
-          staffList, showMsg, SHIFT_TYPES } = useShift();
+          staffList, showMsg, SHIFT_TYPES, subTab } = useShift();
   const [editKey,       setEditKey]       = useState(null);
   const [editForm,      setEditForm]      = useState({ label:"", startH:9, endH:18 });
   const [newForm,       setNewForm]       = useState({ label:"", startH:9, endH:18 });
@@ -1050,180 +1050,188 @@ function RequiredTab() {
 
   return (
     <div>
-      <p style={{color:C.textSub,fontSize:13,marginBottom:16}}>勤務形態の追加・編集・削除と、必要人数・順序制約を設定します。</p>
+      <p style={{color:C.textSub,fontSize:13,marginBottom:16}}>
+        {subTab==="required_order" ? "前日のシフト翌日に入れないシフトの組み合わせを設定します。" : "勤務形態の追加・編集・削除と、必要人数・固定ルールを設定します。"}
+      </p>
 
-      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
-        {sortedShifts.map(s => {
-          const t = SHIFT_TYPES[s.key];
-          const isEdit = editKey === s.key;
-          return (
-            <div key={s.key} style={{...S.card,padding:"12px 16px",border:isEdit?`2px solid ${C.accent}`:`1px solid ${C.border}`}}>
-              {isEdit ? (
-                <div>
-                  <div style={{marginBottom:12}}>
-                    <label style={S.label}>名称</label>
-                    <input value={editForm.label} onChange={e=>setEditForm(f=>({...f,label:e.target.value}))} style={{...S.input,width:110,minWidth:110,padding:"5px 8px"}}/>
-                  </div>
-                  <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start",marginBottom:14}}>
-                    <TimePicker value={editForm.startH} onChange={v=>setEditForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
-                    <TimePicker value={editForm.endH}   onChange={v=>setEditForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      <label style={S.label}>必要人数</label>
-                      <CountPicker value={required[s.key]||0} onChange={v=>setRequired(p=>({...p,[s.key]:v}))}/>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={saveEdit} style={{...S.btn(C.accent),padding:"7px 20px"}}>保存</button>
-                    <button onClick={() => setEditKey(null)} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`,padding:"7px 14px"}}>✕</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                  <div style={{minWidth:60}}><Pill type={s.key}/></div>
-                  <div style={{fontSize:12,color:C.textSub,flex:1}}>
-                    {fmt2(s.startH)}:00 〜 {s.endH>24?`翌${fmt2(s.endH-24)}:00`:`${fmt2(s.endH)}:00`}
-                    {s.isFixedRule && <span style={{marginLeft:6,fontSize:10,color:"var(--badge-yakan-border)",background:"var(--badge-yakan-bg)",borderRadius:4,padding:"1px 5px",border:"1px solid #c4b5fd44"}}>固定</span>}
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:11,color:C.textSub}}>必要</span>
-                    <CountPicker value={required[s.key]||0} onChange={v=>setRequired(p=>({...p,[s.key]:v}))}/>
-                    <span style={{fontSize:11,color:C.textSub}}>名</span>
-                  </div>
-                  {!s.isFixedRule && <button onClick={() => startEdit(s)} style={{...S.btn(C.surface,C.accent),border:`1px solid ${C.border}`,fontSize:12,padding:"4px 12px"}}>編集</button>}
-                  {!s.isFixedRule && <button onClick={() => deleteShift(s.key)} style={{...S.btn(C.surface,C.red),border:`1px solid ${C.border}`,fontSize:12,padding:"4px 12px"}}>削除</button>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{marginBottom:20}}>
-        <button onClick={() => { setShowNewForm(true); setNewForm({label:"",startH:9,endH:18}); }} style={{...S.btn(C.green),padding:"8px 20px"}}>
-          ＋ 新しい勤務形態を追加
-        </button>
-      </div>
-
-      {showNewForm && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={() => setShowNewForm(false)}>
-          <div style={{background:C.surface,borderRadius:14,padding:24,width:"92%",maxWidth:380,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontWeight:800,fontSize:15,color:C.green,marginBottom:16}}>＋ 新しい勤務形態を追加</div>
-            <div style={{marginBottom:14}}>
-              <label style={S.label}>名称</label>
-              <input value={newForm.label} onChange={e=>setNewForm(f=>({...f,label:e.target.value}))} placeholder="例：準夜勤" autoFocus style={{...S.input,width:"100%"}}/>
-            </div>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:20}}>
-              <TimePicker value={newForm.startH} onChange={v=>setNewForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
-              <TimePicker value={newForm.endH}   onChange={v=>setNewForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
-            </div>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <button onClick={() => setShowNewForm(false)} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`}}>キャンセル</button>
-              <button onClick={() => { addShift(); setShowNewForm(false); }} style={S.btn(C.green)}>追加</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{...S.card,padding:"16px",marginBottom:16}}>
-        <div style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:4}}>📌 固定ルール</div>
-        <p style={{fontSize:12,color:C.textSub,marginBottom:14}}>特定スタッフを特定の曜日・時間帯に固定。自動生成時に最優先で割り当てられます。登録したルールは勤務形態一覧にも追加表示されます。</p>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",padding:"12px",background:C.accentBg,borderRadius:10,marginBottom:14,border:`1px solid ${C.accent}33`}}>
-          <div style={{flex:1,minWidth:120}}>
-            <label style={S.label}>スタッフ</label>
-            <select value={fixedRuleForm.empId||""} onChange={e=>setFixedRuleForm(f=>({...f,empId:Number(e.target.value)}))} style={{...S.input,width:"100%"}}>
-              {staffList.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={S.label}>曜日</label>
-            <select value={fixedRuleForm.dow} onChange={e=>setFixedRuleForm(f=>({...f,dow:Number(e.target.value)}))} style={{...S.input,width:78}}>
-              {DOW.map((d,i) => <option key={i} value={i}>{d}曜日</option>)}
-            </select>
-          </div>
-          <TimePicker value={fixedRuleForm.startH??9} onChange={v=>setFixedRuleForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
-          <TimePicker value={fixedRuleForm.endH??18}  onChange={v=>setFixedRuleForm(f=>({...f,endH:v}))}  min={1} max={31} label="終了（時）"/>
-          <button onClick={() => {
-            if (!fixedRuleForm.empId) return;
-            const emp = staffList.find(e => e.id===fixedRuleForm.empId);
-            const startH = fixedRuleForm.startH??9;
-            const endH   = fixedRuleForm.endH??18;
-            const timeStr = `${fmt2(startH)}:00-${endH>24?`翌${fmt2(endH-24)}:00`:`${fmt2(endH)}:00`}`;
-            const ruleName = `${emp?.name.split(" ")[0]}_${DOW[fixedRuleForm.dow]}_${timeStr}`;
-            const matchShift = customShifts.find(s => s.startH===startH && s.endH===endH);
-            const newRule = { id:Date.now(), ...fixedRuleForm, startH, endH, shiftKey:matchShift?.key||ruleName, displayName:ruleName };
-            setFixedRules(prev => [...prev, newRule]);
-            if (!customShifts.some(s=>s.key===ruleName) && !matchShift) {
-              const pc = PILL_COLORS[customShifts.length % PILL_COLORS.length];
-              setCustomShifts(prev => [...prev, { key:ruleName, label:ruleName, short:ruleName.slice(0,2), startH, endH, color:pc.color, bg:pc.bg, text:pc.text, isFixedRule:true }]);
-              setRequired(prev => ({ ...prev, [ruleName]:1 }));
-            }
-            showMsg("✓ 固定ルールを追加しました");
-          }} style={{...S.btn(C.accent),padding:"7px 18px",alignSelf:"flex-end"}}>追加</button>
-        </div>
-        {fixedRules.length===0 ? (
-          <div style={{textAlign:"center",padding:"20px",color:C.textMute,background:C.surface2,borderRadius:10,border:`1.5px dashed ${C.border}`}}>
-            <div style={{fontSize:18,marginBottom:4}}>📌</div>
-            <div style={{fontSize:12}}>固定ルールがまだありません</div>
-          </div>
-        ) : (
-          <div style={{display:"flex",flexDirection:"column",gap:7}}>
-            {fixedRules.map(rule => {
-              const emp = staffList.find(e => e.id===rule.empId);
-              if (!emp) return null;
-              const sh=rule.startH??0, eh=rule.endH??0;
-              const timeStr = `${fmt2(sh)}:00〜${eh>24?`翌${fmt2(eh-24)}:00`:`${fmt2(eh)}:00`}`;
+      {subTab === "required_fixed" && (
+        <>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
+            {sortedShifts.map(s => {
+              const t = SHIFT_TYPES[s.key];
+              const isEdit = editKey === s.key;
               return (
-                <div key={rule.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:C.surface2,borderRadius:9,border:`1px solid ${C.border}`,flexWrap:"wrap"}}>
-                  <span style={{width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0}}/>
-                  <span style={{fontWeight:700,fontSize:12,flex:1}}>{emp.name}</span>
-                  <span style={{fontSize:11,color:C.textSub,background:C.surface,borderRadius:6,padding:"2px 8px",border:`1px solid ${C.border}`}}>{DOW[rule.dow]}曜日</span>
-                  <span style={{fontSize:11,fontWeight:700,color:C.accent,background:C.accentBg,borderRadius:6,padding:"2px 8px",border:`1px solid ${C.accent}44`}}>{timeStr}</span>
-                  {rule.displayName && <span style={{fontSize:10,color:C.textMute,background:C.surface,borderRadius:5,padding:"1px 6px",border:`1px solid ${C.border}`}}>→ {rule.displayName}</span>}
-                  <button onClick={() => {
-                    setFixedRules(prev => prev.filter(r => r.id!==rule.id));
-                    if (rule.displayName) setCustomShifts(prev => prev.filter(s => s.key!==rule.displayName));
-                  }} style={{...S.btn(C.surface,C.red),border:`1px solid ${C.border}`,fontSize:11,padding:"2px 10px",flexShrink:0}}>削除</button>
+                <div key={s.key} style={{...S.card,padding:"12px 16px",border:isEdit?`2px solid ${C.accent}`:`1px solid ${C.border}`}}>
+                  {isEdit ? (
+                    <div>
+                      <div style={{marginBottom:12}}>
+                        <label style={S.label}>名称</label>
+                        <input value={editForm.label} onChange={e=>setEditForm(f=>({...f,label:e.target.value}))} style={{...S.input,width:110,minWidth:110,padding:"5px 8px"}}/>
+                      </div>
+                      <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-start",marginBottom:14}}>
+                        <TimePicker value={editForm.startH} onChange={v=>setEditForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+                        <TimePicker value={editForm.endH}   onChange={v=>setEditForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
+                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          <label style={S.label}>必要人数</label>
+                          <CountPicker value={required[s.key]||0} onChange={v=>setRequired(p=>({...p,[s.key]:v}))}/>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={saveEdit} style={{...S.btn(C.accent),padding:"7px 20px"}}>保存</button>
+                        <button onClick={() => setEditKey(null)} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`,padding:"7px 14px"}}>✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                      <div style={{minWidth:60}}><Pill type={s.key}/></div>
+                      <div style={{fontSize:12,color:C.textSub,flex:1}}>
+                        {fmt2(s.startH)}:00 〜 {s.endH>24?`翌${fmt2(s.endH-24)}:00`:`${fmt2(s.endH)}:00`}
+                        {s.isFixedRule && <span style={{marginLeft:6,fontSize:10,color:"var(--badge-yakan-border)",background:"var(--badge-yakan-bg)",borderRadius:4,padding:"1px 5px",border:"1px solid #c4b5fd44"}}>固定</span>}
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontSize:11,color:C.textSub}}>必要</span>
+                        <CountPicker value={required[s.key]||0} onChange={v=>setRequired(p=>({...p,[s.key]:v}))}/>
+                        <span style={{fontSize:11,color:C.textSub}}>名</span>
+                      </div>
+                      {!s.isFixedRule && <button onClick={() => startEdit(s)} style={{...S.btn(C.surface,C.accent),border:`1px solid ${C.border}`,fontSize:12,padding:"4px 12px"}}>編集</button>}
+                      {!s.isFixedRule && <button onClick={() => deleteShift(s.key)} style={{...S.btn(C.surface,C.red),border:`1px solid ${C.border}`,fontSize:12,padding:"4px 12px"}}>削除</button>}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
 
-      <div style={S.card}>
-        <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>順序制約</div>
-        <div style={{overflowX:"auto"}}>
-          <table style={{borderCollapse:"collapse",fontSize:12}}>
-            <thead>
-              <tr>
-                <th style={{...S.th(80),textAlign:"left",paddingLeft:8}}>前日↓ 翌日→</th>
-                {customShifts.map(s => <th key={s.key} style={S.th(60)}><Pill type={s.key} small/></th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {customShifts.map((from, fi) => (
-                <tr key={from.key} style={{background:fi%2===0?C.surface:C.surface2}}>
-                  <td style={{padding:"6px 8px",borderBottom:`1px solid ${C.border}`}}><Pill type={from.key}/></td>
-                  {customShifts.map(to => {
-                    const isSelf = from.key===to.key, isOn = (orderConstraints[from.key]||[]).includes(to.key);
-                    return (
-                      <td key={to.key} style={{textAlign:"center",padding:"6px 4px",borderBottom:`1px solid ${C.border}`}}>
-                        {isSelf ? <span style={{color:C.textMute}}>—</span> : (
-                          <button onClick={() => setOrderConstraints(prev => { const cur=prev[from.key]||[]; return {...prev,[from.key]:isOn?cur.filter(x=>x!==to.key):[...cur,to.key]}; })}
-                            style={{width:32,height:28,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:11,border:isOn?`2px solid ${C.red}`:`1px solid ${C.border}`,background:isOn?C.redBg:C.surface,color:isOn?C.red:C.textMute,fontFamily:"inherit"}}>
-                            {isOn?"✕":""}
-                          </button>
-                        )}
-                      </td>
-                    );
-                  })}
+          <div style={{marginBottom:20}}>
+            <button onClick={() => { setShowNewForm(true); setNewForm({label:"",startH:9,endH:18}); }} style={{...S.btn(C.green),padding:"8px 20px"}}>
+              ＋ 新しい勤務形態を追加
+            </button>
+          </div>
+
+          {showNewForm && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={() => setShowNewForm(false)}>
+              <div style={{background:C.surface,borderRadius:14,padding:24,width:"92%",maxWidth:380,boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}} onClick={e=>e.stopPropagation()}>
+                <div style={{fontWeight:800,fontSize:15,color:C.green,marginBottom:16}}>＋ 新しい勤務形態を追加</div>
+                <div style={{marginBottom:14}}>
+                  <label style={S.label}>名称</label>
+                  <input value={newForm.label} onChange={e=>setNewForm(f=>({...f,label:e.target.value}))} placeholder="例：準夜勤" autoFocus style={{...S.input,width:"100%"}}/>
+                </div>
+                <div style={{display:"flex",gap:20,flexWrap:"wrap",marginBottom:20}}>
+                  <TimePicker value={newForm.startH} onChange={v=>setNewForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+                  <TimePicker value={newForm.endH}   onChange={v=>setNewForm(f=>({...f,endH:v}))}   min={1} max={31} label="終了（時）"/>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button onClick={() => setShowNewForm(false)} style={{...S.btn(C.surface2,C.textSub),border:`1px solid ${C.border}`}}>キャンセル</button>
+                  <button onClick={() => { addShift(); setShowNewForm(false); }} style={S.btn(C.green)}>追加</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{...S.card,padding:"16px",marginBottom:16}}>
+            <div style={{fontWeight:700,fontSize:14,color:C.text,marginBottom:4}}>📌 固定ルール</div>
+            <p style={{fontSize:12,color:C.textSub,marginBottom:14}}>特定スタッフを特定の曜日・時間帯に固定。自動生成時に最優先で割り当てられます。登録したルールは勤務形態一覧にも追加表示されます。</p>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end",padding:"12px",background:C.accentBg,borderRadius:10,marginBottom:14,border:`1px solid ${C.accent}33`}}>
+              <div style={{flex:1,minWidth:120}}>
+                <label style={S.label}>スタッフ</label>
+                <select value={fixedRuleForm.empId||""} onChange={e=>setFixedRuleForm(f=>({...f,empId:Number(e.target.value)}))} style={{...S.input,width:"100%"}}>
+                  {staffList.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>曜日</label>
+                <select value={fixedRuleForm.dow} onChange={e=>setFixedRuleForm(f=>({...f,dow:Number(e.target.value)}))} style={{...S.input,width:78}}>
+                  {DOW.map((d,i) => <option key={i} value={i}>{d}曜日</option>)}
+                </select>
+              </div>
+              <TimePicker value={fixedRuleForm.startH??9} onChange={v=>setFixedRuleForm(f=>({...f,startH:v}))} min={0} max={30} label="開始（時）"/>
+              <TimePicker value={fixedRuleForm.endH??18}  onChange={v=>setFixedRuleForm(f=>({...f,endH:v}))}  min={1} max={31} label="終了（時）"/>
+              <button onClick={() => {
+                if (!fixedRuleForm.empId) return;
+                const emp = staffList.find(e => e.id===fixedRuleForm.empId);
+                const startH = fixedRuleForm.startH??9;
+                const endH   = fixedRuleForm.endH??18;
+                const timeStr = `${fmt2(startH)}:00-${endH>24?`翌${fmt2(endH-24)}:00`:`${fmt2(endH)}:00`}`;
+                const ruleName = `${emp?.name.split(" ")[0]}_${DOW[fixedRuleForm.dow]}_${timeStr}`;
+                const matchShift = customShifts.find(s => s.startH===startH && s.endH===endH);
+                const newRule = { id:Date.now(), ...fixedRuleForm, startH, endH, shiftKey:matchShift?.key||ruleName, displayName:ruleName };
+                setFixedRules(prev => [...prev, newRule]);
+                if (!customShifts.some(s=>s.key===ruleName) && !matchShift) {
+                  const pc = PILL_COLORS[customShifts.length % PILL_COLORS.length];
+                  setCustomShifts(prev => [...prev, { key:ruleName, label:ruleName, short:ruleName.slice(0,2), startH, endH, color:pc.color, bg:pc.bg, text:pc.text, isFixedRule:true }]);
+                  setRequired(prev => ({ ...prev, [ruleName]:1 }));
+                }
+                showMsg("✓ 固定ルールを追加しました");
+              }} style={{...S.btn(C.accent),padding:"7px 18px",alignSelf:"flex-end"}}>追加</button>
+            </div>
+            {fixedRules.length===0 ? (
+              <div style={{textAlign:"center",padding:"20px",color:C.textMute,background:C.surface2,borderRadius:10,border:`1.5px dashed ${C.border}`}}>
+                <div style={{fontSize:18,marginBottom:4}}>📌</div>
+                <div style={{fontSize:12}}>固定ルールがまだありません</div>
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:7}}>
+                {fixedRules.map(rule => {
+                  const emp = staffList.find(e => e.id===rule.empId);
+                  if (!emp) return null;
+                  const sh=rule.startH??0, eh=rule.endH??0;
+                  const timeStr = `${fmt2(sh)}:00〜${eh>24?`翌${fmt2(eh-24)}:00`:`${fmt2(eh)}:00`}`;
+                  return (
+                    <div key={rule.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:C.surface2,borderRadius:9,border:`1px solid ${C.border}`,flexWrap:"wrap"}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",background:emp.color,flexShrink:0}}/>
+                      <span style={{fontWeight:700,fontSize:12,flex:1}}>{emp.name}</span>
+                      <span style={{fontSize:11,color:C.textSub,background:C.surface,borderRadius:6,padding:"2px 8px",border:`1px solid ${C.border}`}}>{DOW[rule.dow]}曜日</span>
+                      <span style={{fontSize:11,fontWeight:700,color:C.accent,background:C.accentBg,borderRadius:6,padding:"2px 8px",border:`1px solid ${C.accent}44`}}>{timeStr}</span>
+                      {rule.displayName && <span style={{fontSize:10,color:C.textMute,background:C.surface,borderRadius:5,padding:"1px 6px",border:`1px solid ${C.border}`}}>→ {rule.displayName}</span>}
+                      <button onClick={() => {
+                        setFixedRules(prev => prev.filter(r => r.id!==rule.id));
+                        if (rule.displayName) setCustomShifts(prev => prev.filter(s => s.key!==rule.displayName));
+                      }} style={{...S.btn(C.surface,C.red),border:`1px solid ${C.border}`,fontSize:11,padding:"2px 10px",flexShrink:0}}>削除</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {subTab === "required_order" && (
+        <div style={S.card}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>順序制約</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr>
+                  <th style={{...S.th(80),textAlign:"left",paddingLeft:8}}>前日↓ 翌日→</th>
+                  {customShifts.map(s => <th key={s.key} style={S.th(60)}><Pill type={s.key} small/></th>)}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {customShifts.map((from, fi) => (
+                  <tr key={from.key} style={{background:fi%2===0?C.surface:C.surface2}}>
+                    <td style={{padding:"6px 8px",borderBottom:`1px solid ${C.border}`}}><Pill type={from.key}/></td>
+                    {customShifts.map(to => {
+                      const isSelf = from.key===to.key, isOn = (orderConstraints[from.key]||[]).includes(to.key);
+                      return (
+                        <td key={to.key} style={{textAlign:"center",padding:"6px 4px",borderBottom:`1px solid ${C.border}`}}>
+                          {isSelf ? <span style={{color:C.textMute}}>—</span> : (
+                            <button onClick={() => setOrderConstraints(prev => { const cur=prev[from.key]||[]; return {...prev,[from.key]:isOn?cur.filter(x=>x!==to.key):[...cur,to.key]}; })}
+                              style={{width:32,height:28,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:11,border:isOn?`2px solid ${C.red}`:`1px solid ${C.border}`,background:isOn?C.redBg:C.surface,color:isOn?C.red:C.textMute,fontFamily:"inherit"}}>
+                              {isOn?"✕":""}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{marginTop:8,fontSize:11,color:C.textMute}}>✕ = 前日のシフトの翌日には入れない</div>
         </div>
-        <div style={{marginTop:8,fontSize:11,color:C.textMute}}>✕ = 前日のシフトの翌日には入れない</div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1514,6 +1522,8 @@ function App() {
   const [staffSearch,      setStaffSearch]      = useState("");
   const [staffFilter,      setStaffFilter]      = useState("all");
   const [density,          setDensity]          = useState("standard");
+  const [subTab,           setSubTab]           = useState("required_fixed");
+  const [requiredDropdown, setRequiredDropdown] = useState(false);
 
   const SHIFT_TYPES = useMemo(() => {
     const obj = {};
@@ -1968,6 +1978,7 @@ ${pageHtmls}
     showMsg,
     toggleCellLock, toggleAllLock, setCellShift, toggleWish,
     density, setDensity,
+    subTab, setSubTab,
   };
 
   return (
@@ -1998,9 +2009,35 @@ ${pageHtmls}
               const isActive = tab===key;
               const alertCount = key==="alert" ? totalAlerts : 0;
               const TabIcon = iconName && Icons[iconName];
+              const btnStyle = {display:"inline-flex",alignItems:"center",gap:5,padding:"10px 16px",border:"none",borderBottom:isActive?`2px solid ${activeColor}`:"2px solid transparent",background:"transparent",color:isActive?activeColor:"#4A4D52",fontWeight:isActive?700:500,cursor:"pointer",fontSize:12,borderRadius:0,whiteSpace:"nowrap",fontFamily:"inherit",transition:"color 0.15s, border-color 0.15s"};
+              if (key === "required") {
+                return (
+                  <div key={key} style={{position:"relative"}}
+                    onMouseEnter={() => setRequiredDropdown(true)}
+                    onMouseLeave={() => setRequiredDropdown(false)}>
+                    <button onClick={() => { setTab(key); setSubTab("required_fixed"); }} style={btnStyle}>
+                      {TabIcon && <TabIcon size={13}/>}
+                      {label}
+                      <span style={{fontSize:9,marginLeft:1,color:isActive?activeColor:"#9AA0AA"}}>▾</span>
+                    </button>
+                    {requiredDropdown && (
+                      <div style={{position:"absolute",top:"100%",left:0,zIndex:200,background:"#fff",border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",minWidth:128,overflow:"hidden",padding:"4px 0"}}>
+                        {[["required_fixed","固定ルール"],["required_order","順序制約"]].map(([st,sl]) => {
+                          const isSub = tab===key && subTab===st;
+                          return (
+                            <button key={st} onClick={() => { setTab(key); setSubTab(st); setRequiredDropdown(false); }}
+                              style={{display:"block",width:"100%",textAlign:"left",padding:"8px 16px",border:"none",background:isSub?C.accentBg:"transparent",color:isSub?C.accent:C.text,fontSize:12,fontWeight:isSub?700:500,cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}>
+                              {sl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               return (
-                <button key={key} onClick={() => setTab(key)}
-                  style={{display:"inline-flex",alignItems:"center",gap:5,padding:"10px 16px",border:"none",borderBottom:isActive?`2px solid ${activeColor}`:"2px solid transparent",background:"transparent",color:isActive?activeColor:"#4A4D52",fontWeight:isActive?700:500,cursor:"pointer",fontSize:12,borderRadius:0,whiteSpace:"nowrap",fontFamily:"inherit",transition:"color 0.15s, border-color 0.15s"}}>
+                <button key={key} onClick={() => setTab(key)} style={btnStyle}>
                   {TabIcon && <TabIcon size={13}/>}
                   {label}
                   {alertCount>0 && <span style={{marginLeft:4,background:"#FCE0E2",color:"#9B1F2A",borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:700}}>{alertCount}</span>}
