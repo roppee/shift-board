@@ -197,7 +197,7 @@
 
   <div id="root" style="display: none"></div>
 <script id="app-src" type="text/plain">
-const { useState, useMemo, useEffect, useContext, createContext } = React;
+const { useState, useMemo, useEffect, useContext, createContext, useRef } = React;
 
 // ── 定数 ──────────────────────────────────────────────────
 const FIXED_TYPES = {
@@ -1524,6 +1524,8 @@ function App() {
   const [density,          setDensity]          = useState("standard");
   const [subTab,           setSubTab]           = useState("required_fixed");
   const [requiredDropdown, setRequiredDropdown] = useState(false);
+  const [dropdownPos,      setDropdownPos]      = useState({left:0, top:0});
+  const dropdownTimer = useRef(null);
 
   const SHIFT_TYPES = useMemo(() => {
     const obj = {};
@@ -2012,27 +2014,21 @@ ${pageHtmls}
               const btnStyle = {display:"inline-flex",alignItems:"center",gap:5,padding:"10px 16px",border:"none",borderBottom:isActive?`2px solid ${activeColor}`:"2px solid transparent",background:"transparent",color:isActive?activeColor:"#4A4D52",fontWeight:isActive?700:500,cursor:"pointer",fontSize:12,borderRadius:0,whiteSpace:"nowrap",fontFamily:"inherit",transition:"color 0.15s, border-color 0.15s"};
               if (key === "required") {
                 return (
-                  <div key={key} style={{position:"relative"}}
-                    onMouseEnter={() => setRequiredDropdown(true)}
-                    onMouseLeave={() => setRequiredDropdown(false)}>
+                  <div key={key}
+                    onMouseEnter={e => {
+                      clearTimeout(dropdownTimer.current);
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setDropdownPos({left: r.left, top: r.bottom});
+                      setRequiredDropdown(true);
+                    }}
+                    onMouseLeave={() => {
+                      dropdownTimer.current = setTimeout(() => setRequiredDropdown(false), 150);
+                    }}>
                     <button onClick={() => { setTab(key); setSubTab("required_fixed"); }} style={btnStyle}>
                       {TabIcon && <TabIcon size={13}/>}
                       {label}
                       <span style={{fontSize:9,marginLeft:1,color:isActive?activeColor:"#9AA0AA"}}>▾</span>
                     </button>
-                    {requiredDropdown && (
-                      <div style={{position:"absolute",top:"100%",left:0,zIndex:200,background:"#fff",border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",minWidth:128,overflow:"hidden",padding:"4px 0"}}>
-                        {[["required_fixed","固定ルール"],["required_order","順序制約"]].map(([st,sl]) => {
-                          const isSub = tab===key && subTab===st;
-                          return (
-                            <button key={st} onClick={() => { setTab(key); setSubTab(st); setRequiredDropdown(false); }}
-                              style={{display:"block",width:"100%",textAlign:"left",padding:"8px 16px",border:"none",background:isSub?C.accentBg:"transparent",color:isSub?C.accent:C.text,fontSize:12,fontWeight:isSub?700:500,cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}>
-                              {sl}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 );
               }
@@ -2105,6 +2101,22 @@ ${pageHtmls}
           </div>
         </div>
       </div>
+      {requiredDropdown && (
+        <div
+          onMouseEnter={() => clearTimeout(dropdownTimer.current)}
+          onMouseLeave={() => { dropdownTimer.current = setTimeout(() => setRequiredDropdown(false), 150); }}
+          style={{position:"fixed",left:dropdownPos.left,top:dropdownPos.top,zIndex:500,background:"#fff",border:`1px solid ${C.border}`,borderRadius:8,boxShadow:"0 4px 16px rgba(0,0,0,0.12)",minWidth:128,overflow:"hidden",padding:"4px 0"}}>
+          {[["required_fixed","固定ルール"],["required_order","順序制約"]].map(([st,sl]) => {
+            const isSub = tab==="required" && subTab===st;
+            return (
+              <button key={st} onClick={() => { setTab("required"); setSubTab(st); setRequiredDropdown(false); }}
+                style={{display:"block",width:"100%",textAlign:"left",padding:"8px 16px",border:"none",background:isSub?C.accentBg:"transparent",color:isSub?C.accent:C.text,fontSize:12,fontWeight:isSub?700:500,cursor:"pointer",fontFamily:"inherit",transition:"background 0.1s"}}>
+                {sl}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {showCandidates && (
         <CandidatesModal
           candidates={candidates}
